@@ -45,7 +45,7 @@ export class MetronomeScreen implements Screen {
     this.view.addChild(this.puck);
 
     const help = new Text({
-      text: `metronome ${BPM} BPM — tap space/arrows/click on the beat · C = calibrate`,
+      text: `metronome ${BPM} BPM — tap space/click on the beat · Enter = play · C = calibrate`,
       style: { fill: '#9a9ab0', fontSize: 16 },
     });
     help.anchor.set(0.5, 0);
@@ -92,9 +92,11 @@ export class MetronomeScreen implements Screen {
     }
   }
 
-  onTap(timeMs: number): void {
-    const adjusted = timeMs - loadCalibrationOffsetMs();
-    this.lastTapErrorMs = adjusted - this.conductor.nearestBeatMs(adjusted);
+  onTap(audioTimeMs: number): void {
+    // Convert to song time first — the beat grid lives on the song clock.
+    const songMs =
+      this.conductor.toSongTimeMs(audioTimeMs) - loadCalibrationOffsetMs();
+    this.lastTapErrorMs = songMs - this.conductor.nearestBeatMs(songMs);
   }
 
   get lastErrorMs(): number | null {

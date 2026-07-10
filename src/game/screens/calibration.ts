@@ -90,10 +90,13 @@ export class CalibrationScreen implements Screen {
     }
   }
 
-  onTap(timeMs: number): void {
+  onTap(audioTimeMs: number): void {
     if (this.done) return;
 
-    const delta = timeMs - this.conductor.nearestBeatMs(timeMs);
+    // Song-clock delta vs the actual beat grid; no calibration subtraction
+    // here — this screen is the one measuring that offset.
+    const songMs = this.conductor.toSongTimeMs(audioTimeMs);
+    const delta = songMs - this.conductor.nearestBeatMs(songMs);
     this.tapCount += 1;
     this.lastTap.text = `${delta > 0 ? '+' : ''}${delta.toFixed(0)} ms`;
 

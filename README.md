@@ -22,18 +22,24 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
-## Current state (Phase 1 — the Conductor)
+## Current state (Phase 2 — core gameplay)
 
 Click/press any key to start audio, then:
 
+- **`Enter`** — play the built-in 30-second test song (128 BPM synth groove,
+  72 notes). Food flies at the placeholder monster from four directions;
+  press the matching **arrow key** as it reaches the mouth. Timing grades:
+  Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss. Score, combo and
+  accuracy in the HUD; results overlay at the end. **`R`** — instant retry.
+  **`Esc`** — back to the menu.
 - **Metronome screen** (default): 120 BPM clicks with a puck that lands on
-  the hit line every beat — the drift test. Tap `space`/arrows/click on the
-  beat to see your timing error in ms.
+  the hit line every beat — the drift test. Tap `space`/click on the beat to
+  see your timing error in ms.
 - **`C`** — latency calibration: tap along at 90 BPM (4 warm-up + 12 counted
   taps); the average offset is stored in localStorage and applied to all
   future input. `Esc` cancels.
-- **`D`** — toggle the debug overlay (audio/song time, beat, tap error,
-  calibration offset, FPS).
+- **`D`** — toggle the debug overlay (audio/song time, beat, next note, hit
+  error, calibration offset, FPS).
 
 ## Architecture
 

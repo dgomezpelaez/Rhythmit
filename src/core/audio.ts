@@ -16,6 +16,24 @@ export class AudioClock {
     return this.ctx !== null && this.ctx.state === 'running';
   }
 
+  /** The context, for schedulers (Conductor). Only valid after unlock(). */
+  get context(): AudioContext {
+    if (!this.ctx) throw new Error('AudioClock not unlocked yet');
+    return this.ctx;
+  }
+
+  /**
+   * Map a DOM input event to audio time in ms. event.timeStamp is on the
+   * performance timeline and set when the OS delivered the event, so the
+   * (timeStamp − performance.now()) term subtracts main-thread handler
+   * delay. Hit judgment must use this, never the time the handler ran.
+   */
+  eventTimeToAudioMs(e: Event): number | null {
+    const now = this.nowMs();
+    if (now === null) return null;
+    return now + (e.timeStamp - performance.now());
+  }
+
   /** Current audio time in milliseconds, or null before unlock. */
   nowMs(): number | null {
     return this.ctx ? this.ctx.currentTime * 1000 : null;

@@ -1,22 +1,24 @@
 import { Application } from 'pixi.js';
 import { AudioClock } from './core/audio';
+import { parseChart, type Chart, type Direction } from './core/chart';
 import { Conductor } from './core/conductor';
 import { startRenderLoop } from './core/loop';
 import { loadCalibrationOffsetMs } from './core/settings';
 import { CalibrationScreen } from './game/screens/calibration';
+import { GameplayScreen } from './game/screens/gameplay';
 import { MetronomeScreen } from './game/screens/metronome';
 import type { Screen } from './game/screens/screen';
+import { synthesizeTestTrack } from './game/testtrack';
 
 const STAGE_WIDTH = 960;
 const STAGE_HEIGHT = 540;
 
-const TAP_KEYS = new Set([
-  'Space',
-  'ArrowLeft',
-  'ArrowRight',
-  'ArrowUp',
-  'ArrowDown',
-]);
+const DIR_KEYS: Record<string, Direction> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+};
 
 async function bootstrap(): Promise<void> {
   const app = new Application();
@@ -37,6 +39,8 @@ async function bootstrap(): Promise<void> {
   let conductor: Conductor | null = null;
   let metronome: MetronomeScreen | null = null;
   let calibration: CalibrationScreen | null = null;
+  let gameplay: GameplayScreen | null = null;
+  let gameplayLoading = false;
   let current: Screen | null = null;
   let debugVisible = true;
 
@@ -62,6 +66,32 @@ async function bootstrap(): Promise<void> {
     switchTo(metronome);
   };
 
+  /** Lazy-load the test song (chart fetch + offline synth) on first play. */
+  const enterGameplay = async () => {
+    if (gameplayLoading) return;
+    if (!gameplay) {
+      gameplayLoading = true;
+      try {
+        const response = await fetch('songs/test/chart.json');
+        if (!response.ok) {
+          throw new Error(`chart fetch failed: HTTP ${response.status}`);
+        }
+        const chart: Chart = parseChart(await response.json());
+        const buffer = await synthesizeTestTrack();
+        gameplay = new GameplayScreen(
+          conductor!,
+          chart,
+          buffer,
+          STAGE_WIDTH,
+          STAGE_HEIGHT,
+        );
+      } finally {
+        gameplayLoading = false;
+      }
+    }
+    switchTo(gameplay);
+  };
+
   const unlock = async (e: Event) => {
     await clock.unlock();
     hint.classList.add('hidden');
@@ -73,19 +103,24 @@ async function bootstrap(): Promise<void> {
   window.addEventListener('pointerdown', unlock);
   window.addEventListener('keydown', unlock);
 
-  const tap = (e: Event) => {
-    const timeMs = clock.eventTimeToAudioMs(e);
-    if (timeMs !== null && current?.onTap) current.onTap(timeMs);
-  };
-
   window.addEventListener('keydown', (e) => {
     if (!current) return;
-    if (TAP_KEYS.has(e.code)) {
-      tap(e);
+    const dir = DIR_KEYS[e.code];
+    if (dir && current.onDir) {
+      const timeMs = clock.eventTimeToAudioMs(e);
+      if (timeMs !== null) current.onDir(dir, timeMs);
       e.preventDefault();
+    } else if ((dir || e.code === 'Space') && current.onTap) {
+      const timeMs = clock.eventTimeToAudioMs(e);
+      if (timeMs !== null) current.onTap(timeMs);
+      e.preventDefault();
+    } else if (e.code === 'Enter' && current === metronome) {
+      void enterGameplay();
     } else if (e.code === 'KeyC' && current === metronome) {
       switchTo(calibration!);
-    } else if (e.code === 'Escape' && current === calibration) {
+    } else if (e.code === 'KeyR' && current === gameplay) {
+      switchTo(gameplay!); // exit + enter = instant restart
+    } else if (e.code === 'Escape' && current !== metronome) {
       switchTo(metronome!);
     } else if (e.code === 'KeyD') {
       debugVisible = !debugVisible;
@@ -93,7 +128,10 @@ async function bootstrap(): Promise<void> {
     }
   });
   window.addEventListener('pointerdown', (e) => {
-    if (current) tap(e);
+    if (current?.onTap) {
+      const timeMs = clock.eventTimeToAudioMs(e);
+      if (timeMs !== null) current.onTap(timeMs);
+    }
   });
 
   // FPS as an exponential moving average of frame time.
@@ -114,14 +152,25 @@ async function bootstrap(): Promise<void> {
         debug.textContent = 'audio: locked (awaiting gesture)';
       } else if (conductor?.running) {
         const songMs = conductor.songTimeMs();
-        debug.textContent = [
+        const lines = [
           `audio    ${(audioMs / 1000).toFixed(3)}s`,
           `song     ${(songMs / 1000).toFixed(3)}s`,
           `beat     ${Math.floor(conductor.beatAt(songMs))} @ ${conductor.bpm} BPM`,
-          `tap err  ${metronome?.lastErrorMs?.toFixed(0) ?? '—'} ms`,
+        ];
+        if (current === gameplay && gameplay) {
+          lines.push(
+            `next     ${gameplay.nextNoteLabel()}`,
+            `hit err  ${gameplay.lastErrorMs?.toFixed(0) ?? '—'} ms`,
+            `judged   ${gameplay.judgedLabel()}`,
+          );
+        } else {
+          lines.push(`tap err  ${metronome?.lastErrorMs?.toFixed(0) ?? '—'} ms`);
+        }
+        lines.push(
           `cal off  ${loadCalibrationOffsetMs()} ms`,
           `fps      ${(1000 / frameMsEma).toFixed(0)}`,
-        ].join('\n');
+        );
+        debug.textContent = lines.join('\n');
       } else {
         debug.textContent = `audio    ${(audioMs / 1000).toFixed(3)}s`;
       }

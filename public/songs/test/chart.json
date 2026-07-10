@@ -1,0 +1,301 @@
+{
+  "version": 1,
+  "song": {
+    "title": "Test Groove",
+    "artist": "built-in",
+    "audio": "synth:test-track",
+    "bpm": 128,
+    "offsetMs": 0
+  },
+  "difficulty": "normal",
+  "notes": [
+    {
+      "timeMs": 3750,
+      "dir": "down"
+    },
+    {
+      "timeMs": 4219,
+      "dir": "left"
+    },
+    {
+      "timeMs": 4688,
+      "dir": "up"
+    },
+    {
+      "timeMs": 5156,
+      "dir": "right"
+    },
+    {
+      "timeMs": 5625,
+      "dir": "down"
+    },
+    {
+      "timeMs": 6094,
+      "dir": "left"
+    },
+    {
+      "timeMs": 6563,
+      "dir": "up"
+    },
+    {
+      "timeMs": 7031,
+      "dir": "right"
+    },
+    {
+      "timeMs": 7500,
+      "dir": "down"
+    },
+    {
+      "timeMs": 7969,
+      "dir": "left"
+    },
+    {
+      "timeMs": 8438,
+      "dir": "up"
+    },
+    {
+      "timeMs": 8906,
+      "dir": "right"
+    },
+    {
+      "timeMs": 9375,
+      "dir": "down"
+    },
+    {
+      "timeMs": 9844,
+      "dir": "left"
+    },
+    {
+      "timeMs": 10313,
+      "dir": "up"
+    },
+    {
+      "timeMs": 10781,
+      "dir": "right"
+    },
+    {
+      "timeMs": 11250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 11719,
+      "dir": "left"
+    },
+    {
+      "timeMs": 12188,
+      "dir": "down"
+    },
+    {
+      "timeMs": 12656,
+      "dir": "right"
+    },
+    {
+      "timeMs": 13125,
+      "dir": "down"
+    },
+    {
+      "timeMs": 13594,
+      "dir": "left"
+    },
+    {
+      "timeMs": 14063,
+      "dir": "down"
+    },
+    {
+      "timeMs": 14531,
+      "dir": "right"
+    },
+    {
+      "timeMs": 15000,
+      "dir": "down"
+    },
+    {
+      "timeMs": 15469,
+      "dir": "left"
+    },
+    {
+      "timeMs": 15938,
+      "dir": "down"
+    },
+    {
+      "timeMs": 16406,
+      "dir": "right"
+    },
+    {
+      "timeMs": 16875,
+      "dir": "down"
+    },
+    {
+      "timeMs": 17344,
+      "dir": "left"
+    },
+    {
+      "timeMs": 17813,
+      "dir": "down"
+    },
+    {
+      "timeMs": 18281,
+      "dir": "right"
+    },
+    {
+      "timeMs": 18750,
+      "dir": "down"
+    },
+    {
+      "timeMs": 18984,
+      "dir": "up"
+    },
+    {
+      "timeMs": 19219,
+      "dir": "left"
+    },
+    {
+      "timeMs": 19688,
+      "dir": "down"
+    },
+    {
+      "timeMs": 19922,
+      "dir": "up"
+    },
+    {
+      "timeMs": 20156,
+      "dir": "right"
+    },
+    {
+      "timeMs": 20625,
+      "dir": "down"
+    },
+    {
+      "timeMs": 20859,
+      "dir": "up"
+    },
+    {
+      "timeMs": 21094,
+      "dir": "left"
+    },
+    {
+      "timeMs": 21563,
+      "dir": "down"
+    },
+    {
+      "timeMs": 21797,
+      "dir": "up"
+    },
+    {
+      "timeMs": 22031,
+      "dir": "right"
+    },
+    {
+      "timeMs": 22500,
+      "dir": "down"
+    },
+    {
+      "timeMs": 22734,
+      "dir": "up"
+    },
+    {
+      "timeMs": 22969,
+      "dir": "left"
+    },
+    {
+      "timeMs": 23438,
+      "dir": "down"
+    },
+    {
+      "timeMs": 23672,
+      "dir": "up"
+    },
+    {
+      "timeMs": 23906,
+      "dir": "right"
+    },
+    {
+      "timeMs": 24375,
+      "dir": "down"
+    },
+    {
+      "timeMs": 24609,
+      "dir": "up"
+    },
+    {
+      "timeMs": 24844,
+      "dir": "left"
+    },
+    {
+      "timeMs": 25313,
+      "dir": "down"
+    },
+    {
+      "timeMs": 25547,
+      "dir": "up"
+    },
+    {
+      "timeMs": 25781,
+      "dir": "right"
+    },
+    {
+      "timeMs": 26250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 26484,
+      "dir": "left"
+    },
+    {
+      "timeMs": 26719,
+      "dir": "up"
+    },
+    {
+      "timeMs": 26953,
+      "dir": "right"
+    },
+    {
+      "timeMs": 27188,
+      "dir": "down"
+    },
+    {
+      "timeMs": 27422,
+      "dir": "left"
+    },
+    {
+      "timeMs": 27656,
+      "dir": "up"
+    },
+    {
+      "timeMs": 27891,
+      "dir": "right"
+    },
+    {
+      "timeMs": 28125,
+      "dir": "down"
+    },
+    {
+      "timeMs": 28359,
+      "dir": "left"
+    },
+    {
+      "timeMs": 28594,
+      "dir": "up"
+    },
+    {
+      "timeMs": 28828,
+      "dir": "right"
+    },
+    {
+      "timeMs": 29063,
+      "dir": "down"
+    },
+    {
+      "timeMs": 29297,
+      "dir": "left"
+    },
+    {
+      "timeMs": 29531,
+      "dir": "up"
+    },
+    {
+      "timeMs": 29766,
+      "dir": "right"
+    }
+  ]
+}

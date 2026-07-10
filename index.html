@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monster Feeder</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👾</text></svg>"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0d0d12;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+      }
+      #stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+      #stage canvas {
+        display: block;
+      }
+      #audio-hint {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 24px;
+        text-align: center;
+        color: #9a9ab0;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+      }
+      #audio-hint.hidden {
+        opacity: 0;
+      }
+      #debug {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        color: #5f6;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        pointer-events: none;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="audio-hint">click or press any key to start audio</div>
+    <div id="debug"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

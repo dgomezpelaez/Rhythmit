@@ -22,6 +22,19 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
+## Current state (Phase 1 — the Conductor)
+
+Click/press any key to start audio, then:
+
+- **Metronome screen** (default): 120 BPM clicks with a puck that lands on
+  the hit line every beat — the drift test. Tap `space`/arrows/click on the
+  beat to see your timing error in ms.
+- **`C`** — latency calibration: tap along at 90 BPM (4 warm-up + 12 counted
+  taps); the average offset is stored in localStorage and applied to all
+  future input. `Esc` cancels.
+- **`D`** — toggle the debug overlay (audio/song time, beat, tap error,
+  calibration offset, FPS).
+
 ## Architecture
 
 ```

@@ -22,16 +22,23 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
-## Current state (Phase 2 — core gameplay)
+## Current state (Phase 3 — the monster)
 
 Click/press any key to start audio, then:
 
 - **`Enter`** — play the built-in 30-second test song (128 BPM synth groove,
-  72 notes). Food flies at the placeholder monster from four directions;
-  press the matching **arrow key** as it reaches the mouth. Timing grades:
-  Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss. Score, combo and
-  accuracy in the HUD; results overlay at the end. **`R`** — instant retry.
-  **`Esc`** — back to the menu.
+  72 notes). Food flies at **Chompo**, the default monster, from four
+  directions; press the matching **arrow key** as it reaches the mouth.
+  Timing grades: Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss.
+  Score, combo and accuracy in the HUD; results overlay at the end.
+  **`R`** — instant retry. **`Esc`** — back to the menu.
+- **Chompo reacts to everything**: directional chomps (perfects chain into a
+  starry-eyed flourish), splats on misses, escalating expressions at combo
+  10/25 and fever mode at 50, and its eyes track the nearest incoming food.
+  Misses drain the **hunger bar** — empty means a comedic KO collapse.
+  Chompo is defined entirely by the `character.json` contract (spritesheet
+  grid + JSON, zero code); its sheet and voice clips are generated at
+  runtime, so a real art pass is a drop-in replacement.
 - **Metronome screen** (default): 120 BPM clicks with a puck that lands on
   the hit line every beat — the drift test. Tap `space`/click on the beat to
   see your timing error in ms.

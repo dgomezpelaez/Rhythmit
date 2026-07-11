@@ -4,6 +4,7 @@ import { parseChart, type Chart, type Direction } from './core/chart';
 import { Conductor } from './core/conductor';
 import { startRenderLoop } from './core/loop';
 import { loadCalibrationOffsetMs } from './core/settings';
+import { buildChompo } from './game/monster/chompo';
 import { CalibrationScreen } from './game/screens/calibration';
 import { GameplayScreen } from './game/screens/gameplay';
 import { MetronomeScreen } from './game/screens/metronome';
@@ -66,7 +67,7 @@ async function bootstrap(): Promise<void> {
     switchTo(metronome);
   };
 
-  /** Lazy-load the test song (chart fetch + offline synth) on first play. */
+  /** Lazy-load the test song and default monster on first play. */
   const enterGameplay = async () => {
     if (gameplayLoading) return;
     if (!gameplay) {
@@ -77,11 +78,16 @@ async function bootstrap(): Promise<void> {
           throw new Error(`chart fetch failed: HTTP ${response.status}`);
         }
         const chart: Chart = parseChart(await response.json());
-        const buffer = await synthesizeTestTrack();
+        const [buffer, character] = await Promise.all([
+          synthesizeTestTrack(),
+          buildChompo(),
+        ]);
         gameplay = new GameplayScreen(
           conductor!,
           chart,
           buffer,
+          character,
+          clock.context,
           STAGE_WIDTH,
           STAGE_HEIGHT,
         );

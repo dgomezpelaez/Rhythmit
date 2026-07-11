@@ -4,6 +4,8 @@ import type { Conductor } from '../../core/conductor';
 import { HitJudge, WINDOWS, type Judgment } from '../../core/judge';
 import { ScoreState } from '../../core/score';
 import { loadCalibrationOffsetMs } from '../../core/settings';
+import type { LoadedCharacter } from '../../core/sheet';
+import { Monster } from '../monster/monster';
 import type { Screen } from './screen';
 
 /** How long a note is on screen before its hit moment. */
@@ -14,6 +16,17 @@ const TRAVEL_PX = 380;
 const MISS_LINGER_MS = 350;
 const FLOAT_TEXT_MS = 600;
 const END_DELAY_MS = 1500;
+/** Pause on the KO collapse before the results overlay appears. */
+const KO_OVERLAY_DELAY_MS = 1400;
+
+/** Monster sprite centre sits above the note convergence point so the
+ *  MOUTH (drawn below frame centre) is what the food flies into. */
+const MOUTH_OFFSET_PX = 30;
+
+const HUNGER_MISS = 0.15;
+const HUNGER_HIT = 0.03;
+const HUNGER_BAR_W = 180;
+const HUNGER_BAR_H = 12;
 
 const DIR_VECTORS: Record<Direction, { x: number; y: number }> = {
   left: { x: -1, y: 0 },
@@ -42,9 +55,10 @@ interface FloatText {
 }
 
 /**
- * Core gameplay: food notes fly at the (placeholder) monster from four
- * directions; note positions are pure functions of song time. Judgment and
- * scoring live in core; this screen renders and routes input.
+ * Core gameplay: food notes fly at the monster from four directions; note
+ * positions are pure functions of song time. Judgment and scoring live in
+ * core; the monster reacts to every judgment, its hunger drains on misses
+ * (empty = comedic KO), and this screen renders and routes input.
  */
 export class GameplayScreen implements Screen {
   readonly view = new Container();
@@ -56,7 +70,8 @@ export class GameplayScreen implements Screen {
   private readonly scoreText: Text;
   private readonly comboText: Text;
   private readonly accText: Text;
-  private readonly monster: Graphics;
+  private readonly monster: Monster;
+  private readonly hungerBar: Graphics;
   private readonly endOverlay: Container;
   private readonly endText: Text;
 
@@ -67,11 +82,15 @@ export class GameplayScreen implements Screen {
   private floatTexts: FloatText[] = [];
   private lastHitErrMs: number | null = null;
   private finished = false;
+  private hunger = 1;
+  private koAtMs: number | null = null;
 
   constructor(
     private readonly conductor: Conductor,
     private readonly chart: Chart,
     private readonly buffer: AudioBuffer,
+    character: LoadedCharacter,
+    audio: AudioContext,
     stageWidth: number,
     stageHeight: number,
   ) {
@@ -79,25 +98,12 @@ export class GameplayScreen implements Screen {
     this.cy = stageHeight / 2;
     this.judge = new HitJudge(chart.notes);
 
+    // Monster below the food so incoming notes fly in front of its face.
+    this.monster = new Monster(character, audio);
+    this.monster.view.position.set(this.cx, this.cy - MOUTH_OFFSET_PX);
+    this.view.addChild(this.monster.view);
     this.view.addChild(this.noteLayer);
     this.view.addChild(this.uiLayer);
-
-    // Placeholder monster: a circle with a mouth. Phase 3 replaces this.
-    this.monster = new Graphics()
-      .circle(0, 0, 56)
-      .fill('#7a5cff')
-      .circle(-18, -14, 8)
-      .fill('#ffffff')
-      .circle(18, -14, 8)
-      .fill('#ffffff')
-      .circle(-18, -14, 3.5)
-      .fill('#1a1a24')
-      .circle(18, -14, 3.5)
-      .fill('#1a1a24')
-      .ellipse(0, 18, 22, 14)
-      .fill('#2b1a4d');
-    this.monster.position.set(this.cx, this.cy);
-    this.uiLayer.addChild(this.monster);
 
     this.scoreText = new Text({
       text: '0',
@@ -115,6 +121,18 @@ export class GameplayScreen implements Screen {
     this.accText.position.set(stageWidth - 16, 46);
     this.uiLayer.addChild(this.accText);
 
+    const hungerLabel = new Text({
+      text: 'hunger',
+      style: { fill: '#9a9ab0', fontSize: 12 },
+    });
+    hungerLabel.anchor.set(0.5, 0);
+    hungerLabel.position.set(this.cx, 12);
+    this.uiLayer.addChild(hungerLabel);
+
+    this.hungerBar = new Graphics();
+    this.hungerBar.position.set(this.cx - HUNGER_BAR_W / 2, 30);
+    this.uiLayer.addChild(this.hungerBar);
+
     this.comboText = new Text({
       text: '',
       style: { fill: '#ffffff', fontSize: 36, fontWeight: 'bold' },
@@ -124,28 +142,30 @@ export class GameplayScreen implements Screen {
     this.uiLayer.addChild(this.comboText);
 
     const help = new Text({
-      text: `${chart.song.title} — arrows to eat · R restart · Esc menu`,
+      text: `${chart.song.title} — arrows to feed ${this.monster.name} · R restart · Esc menu`,
       style: { fill: '#5f6f76', fontSize: 14 },
     });
     help.position.set(12, stageHeight - 26);
     this.uiLayer.addChild(help);
 
+    // Results panel sits at the top so the celebrating (or KO'd) monster
+    // stays visible underneath it.
     this.endOverlay = new Container();
     const panel = new Graphics()
-      .roundRect(this.cx - 240, this.cy - 130, 480, 260, 16)
+      .roundRect(this.cx - 250, 56, 500, 204, 16)
       .fill({ color: '#0d0d12', alpha: 0.92 });
     this.endOverlay.addChild(panel);
     this.endText = new Text({
       text: '',
       style: {
         fill: '#ffffff',
-        fontSize: 20,
+        fontSize: 18,
         align: 'center',
-        lineHeight: 30,
+        lineHeight: 27,
       },
     });
     this.endText.anchor.set(0.5);
-    this.endText.position.set(this.cx, this.cy);
+    this.endText.position.set(this.cx, 158);
     this.endOverlay.addChild(this.endText);
     this.endOverlay.visible = false;
     this.uiLayer.addChild(this.endOverlay);
@@ -161,6 +181,9 @@ export class GameplayScreen implements Screen {
     this.floatTexts = [];
     this.lastHitErrMs = null;
     this.finished = false;
+    this.hunger = 1;
+    this.koAtMs = null;
+    this.monster.reset();
     this.endOverlay.visible = false;
     this.comboText.text = '';
     this.noteLayer.removeChildren();
@@ -178,13 +201,23 @@ export class GameplayScreen implements Screen {
   update(): void {
     const songMs = this.conductor.songTimeMs();
 
-    for (const noteIndex of this.judge.sweepMisses(songMs)) {
-      this.scoreState.addJudgment('miss');
-      this.missedAtMs.set(noteIndex, songMs);
-      this.spawnFloatText('miss', this.chart.notes[noteIndex]!, songMs);
+    if (!this.finished) {
+      for (const noteIndex of this.judge.sweepMisses(songMs)) {
+        this.scoreState.addJudgment('miss');
+        this.missedAtMs.set(noteIndex, songMs);
+        this.monster.onMiss();
+        this.monster.setCombo(this.scoreState.combo);
+        this.hunger = Math.max(0, this.hunger - HUNGER_MISS);
+        this.spawnFloatText('miss', this.chart.notes[noteIndex]!, songMs);
+      }
+      if (this.hunger <= 0) {
+        this.knockOut(songMs);
+      } else {
+        this.updateNoteSprites(songMs);
+      }
     }
 
-    this.updateNoteSprites(songMs);
+    this.monster.update(songMs, this.gazeTarget());
     this.updateFloatTexts(songMs);
     this.updateHud();
     this.checkEnd(songMs);
@@ -198,6 +231,9 @@ export class GameplayScreen implements Screen {
     if (!hit) return;
     this.lastHitErrMs = hit.errorMs;
     this.scoreState.addJudgment(hit.judgment);
+    this.monster.onHit(hit.judgment, dir);
+    this.monster.setCombo(this.scoreState.combo);
+    this.hunger = Math.min(1, this.hunger + HUNGER_HIT);
     const sprite = this.sprites.get(hit.noteIndex);
     if (sprite) {
       sprite.destroy();
@@ -247,6 +283,32 @@ export class GameplayScreen implements Screen {
     }
   }
 
+  /** Vector from the monster's centre to the nearest live incoming food. */
+  private gazeTarget(): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null;
+    let bestD = Infinity;
+    for (const [i, sprite] of this.sprites) {
+      if (this.missedAtMs.has(i)) continue;
+      const dx = sprite.x - this.cx;
+      const dy = sprite.y - this.cy;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = { x: dx, y: dy };
+      }
+    }
+    return best;
+  }
+
+  private knockOut(songMs: number): void {
+    this.finished = true;
+    this.koAtMs = songMs;
+    this.conductor.stop();
+    this.monster.knockOut();
+    for (const sprite of this.sprites.values()) sprite.destroy();
+    this.sprites.clear();
+  }
+
   private spawnFloatText(judgment: Judgment, note: Note, songMs: number): void {
     const style = JUDGMENT_STYLE[judgment];
     const text = new Text({
@@ -278,9 +340,27 @@ export class GameplayScreen implements Screen {
     this.accText.text = `${this.scoreState.accuracy().toFixed(1)}%`;
     this.comboText.text =
       this.scoreState.combo >= 2 ? `${this.scoreState.combo} combo` : '';
+
+    const color =
+      this.hunger > 0.5 ? '#7cff6b' : this.hunger > 0.25 ? '#ffd166' : '#ff6b6b';
+    this.hungerBar
+      .clear()
+      .roundRect(0, 0, HUNGER_BAR_W, HUNGER_BAR_H, 6)
+      .fill('#26263a');
+    if (this.hunger > 0) {
+      this.hungerBar
+        .roundRect(1, 1, (HUNGER_BAR_W - 2) * this.hunger, HUNGER_BAR_H - 2, 5)
+        .fill(color);
+    }
   }
 
   private checkEnd(songMs: number): void {
+    if (this.koAtMs !== null) {
+      if (!this.endOverlay.visible && songMs > this.koAtMs + KO_OVERLAY_DELAY_MS) {
+        this.showEnd(`KO! ${this.monster.name} fainted from hunger`);
+      }
+      return;
+    }
     if (this.finished) return;
     const lastNote = this.chart.notes[this.chart.notes.length - 1]!;
     const chartDone =
@@ -288,11 +368,17 @@ export class GameplayScreen implements Screen {
     if (!chartDone && !this.conductor.ended) return;
 
     this.finished = true;
+    this.monster.celebrate();
+    this.showEnd(`${this.monster.name} is stuffed and happy!`);
+  }
+
+  private showEnd(headline: string): void {
     const s = this.scoreState;
     this.endText.text = [
+      headline,
+      '',
       `score  ${s.score}`,
       `accuracy  ${s.accuracy().toFixed(1)}%   max combo  ${s.maxCombo}`,
-      '',
       `perfect ${s.counts.perfect} · good ${s.counts.good} · okay ${s.counts.okay} · miss ${s.counts.miss}`,
       '',
       'R — retry     Esc — menu',

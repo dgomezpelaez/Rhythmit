@@ -4,6 +4,13 @@
  * human-readable because modder experience is user experience.
  */
 
+import {
+  fail,
+  requireFiniteNumber,
+  requireObject,
+  requireString,
+} from './validate';
+
 export type Direction = 'left' | 'right' | 'up' | 'down';
 export type NoteType = 'tap' | 'hold';
 
@@ -33,31 +40,6 @@ export interface Chart {
 
 const DIRECTIONS: readonly Direction[] = ['left', 'right', 'up', 'down'];
 const NOTE_TYPES: readonly NoteType[] = ['tap', 'hold'];
-
-class ChartError extends Error {}
-
-function fail(path: string, message: string): never {
-  throw new ChartError(`${path}: ${message}`);
-}
-
-function requireObject(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    fail(path, 'expected an object');
-  }
-  return value as Record<string, unknown>;
-}
-
-function requireString(value: unknown, path: string): string {
-  if (typeof value !== 'string') fail(path, 'expected a string');
-  return value;
-}
-
-function requireFiniteNumber(value: unknown, path: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    fail(path, 'expected a number');
-  }
-  return value;
-}
 
 /** Parse and validate a chart. Throws Error with a readable message. */
 export function parseChart(json: unknown): Chart {

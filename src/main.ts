@@ -88,6 +88,7 @@ async function bootstrap(): Promise<void> {
           buffer,
           character,
           clock.context,
+          app.renderer,
           STAGE_WIDTH,
           STAGE_HEIGHT,
         );

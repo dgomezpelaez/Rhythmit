@@ -1,14 +1,21 @@
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Text, type Renderer } from 'pixi.js';
 import type { Chart, Direction, Note } from '../../core/chart';
 import type { Conductor } from '../../core/conductor';
 import { Hitstop } from '../../core/hitstop';
 import { HitJudge, WINDOWS, type Judgment } from '../../core/judge';
 import { ParticleSystem } from '../../core/particles';
-import { ScoreState } from '../../core/score';
+import { gradeFor, ScoreState } from '../../core/score';
 import { loadCalibrationOffsetMs } from '../../core/settings';
 import type { LoadedCharacter } from '../../core/sheet';
 import { Monster } from '../monster/monster';
 import { SplatLayer } from '../monster/splats';
+import {
+  buildShareCard,
+  cardToBlob,
+  copyImageToClipboard,
+  downloadBlob,
+} from '../sharecard';
+import { ResultsOverlay, type ResultsData, type ShareAction } from './results';
 import type { Screen } from './screen';
 
 /** How long a note is on screen before its hit moment. */
@@ -34,6 +41,10 @@ const HUNGER_BAR_H = 12;
 /** Subtle whole-world breathe on downbeats; UI stays fixed. */
 const ZOOM_PULSE_DECAY_MS = 140;
 const ZOOM_PULSE_AMOUNT = 0.015;
+/** Confetti keeps firing on beats this long after a clear. */
+const CELEBRATE_CONFETTI_MS = 4000;
+/** Comedic KO: one more splat lands every this-many ms during the collapse. */
+const KO_SPLAT_RAIN_INTERVAL_MS = 200;
 /** How long the float-text spawn pop lasts (scale 1.3 → 1). */
 const FLOAT_POP_MS = 100;
 
@@ -94,8 +105,7 @@ export class GameplayScreen implements Screen {
   private readonly accText: Text;
   private readonly monster: Monster;
   private readonly hungerBar: Graphics;
-  private readonly endOverlay: Container;
-  private readonly endText: Text;
+  private readonly results: ResultsOverlay;
 
   private judge: HitJudge;
   private scoreState = new ScoreState();
@@ -113,6 +123,9 @@ export class GameplayScreen implements Screen {
   private zoomPulse = 0;
   private lastBeat = Number.NEGATIVE_INFINITY;
   private lastVisMs: number | null = null;
+  private clearedAtMs: number | null = null;
+  private lastKoSplatMs = 0;
+  private lastResults: ResultsData | null = null;
 
   constructor(
     private readonly conductor: Conductor,
@@ -120,6 +133,7 @@ export class GameplayScreen implements Screen {
     private readonly buffer: AudioBuffer,
     character: LoadedCharacter,
     audio: AudioContext,
+    private readonly renderer: Renderer,
     stageWidth: number,
     stageHeight: number,
   ) {
@@ -183,27 +197,10 @@ export class GameplayScreen implements Screen {
     help.position.set(12, stageHeight - 26);
     this.uiLayer.addChild(help);
 
-    // Results panel sits at the top so the celebrating (or KO'd) monster
-    // stays visible underneath it.
-    this.endOverlay = new Container();
-    const panel = new Graphics()
-      .roundRect(this.cx - 250, 56, 500, 204, 16)
-      .fill({ color: '#0d0d12', alpha: 0.92 });
-    this.endOverlay.addChild(panel);
-    this.endText = new Text({
-      text: '',
-      style: {
-        fill: '#ffffff',
-        fontSize: 18,
-        align: 'center',
-        lineHeight: 27,
-      },
-    });
-    this.endText.anchor.set(0.5);
-    this.endText.position.set(this.cx, 158);
-    this.endOverlay.addChild(this.endText);
-    this.endOverlay.visible = false;
-    this.uiLayer.addChild(this.endOverlay);
+    this.results = new ResultsOverlay(stageWidth, stageHeight, (action) =>
+      this.handleShare(action),
+    );
+    this.uiLayer.addChild(this.results.view);
   }
 
   enter(): void {
@@ -224,8 +221,11 @@ export class GameplayScreen implements Screen {
     this.zoomPulse = 0;
     this.lastBeat = Number.NEGATIVE_INFINITY;
     this.lastVisMs = null;
+    this.clearedAtMs = null;
+    this.lastKoSplatMs = 0;
+    this.lastResults = null;
     this.monster.reset();
-    this.endOverlay.visible = false;
+    this.results.hide();
     this.comboText.text = '';
     this.noteLayer.removeChildren();
     this.conductor.startSong(
@@ -236,6 +236,7 @@ export class GameplayScreen implements Screen {
   }
 
   exit(): void {
+    this.results.hide();
     this.conductor.stop();
   }
 
@@ -272,7 +273,8 @@ export class GameplayScreen implements Screen {
       }
     }
 
-    this.updateZoomPulse(visMs);
+    this.updateBeatEffects(visMs);
+    this.updateKoSplatRain(songMs, visMs);
     this.monster.update(visMs, this.gazeTarget());
     this.splats.update(visMs);
     this.particles.update(visMs);
@@ -281,18 +283,57 @@ export class GameplayScreen implements Screen {
     this.checkEnd(songMs);
   }
 
-  /** Downbeat detection + exp-decaying world scale. */
-  private updateZoomPulse(visMs: number): void {
+  /** Beat-crossing effects: downbeat zoom pulse + post-clear confetti. */
+  private updateBeatEffects(visMs: number): void {
     const dt = this.lastVisMs === null ? 16 : Math.max(0, visMs - this.lastVisMs);
     this.lastVisMs = visMs;
 
     const beat = Math.floor(this.conductor.beatAt(visMs));
-    if (beat > this.lastBeat) {
-      if (beat >= 0 && beat % 4 === 0) this.zoomPulse = 1;
+    const crossed = beat > this.lastBeat;
+    if (crossed) {
       this.lastBeat = beat;
+      if (beat >= 0 && beat % 4 === 0) this.zoomPulse = 1;
+      // Celebration: confetti raining on every beat, tapering off so it
+      // doesn't churn forever under the results panel.
+      if (
+        this.clearedAtMs !== null &&
+        visMs < this.clearedAtMs + CELEBRATE_CONFETTI_MS
+      ) {
+        this.particles.burst(visMs, {
+          x: this.cx + (Math.random() - 0.5) * 300,
+          y: this.cy - 200,
+          count: 14,
+          colors: (['left', 'right', 'up', 'down'] as const).map(foodTint),
+          speed: [40, 180],
+          lifeMs: [700, 1200],
+          size: [3, 6],
+          gravity: 420,
+          angle: [Math.PI * 0.15, Math.PI * 0.85], // downward fan
+        });
+      }
     }
     this.zoomPulse *= Math.exp(-dt / ZOOM_PULSE_DECAY_MS);
     this.world.scale.set(1 + this.zoomPulse * ZOOM_PULSE_AMOUNT);
+  }
+
+  /** Comedic KO: food keeps landing on the collapsed monster for a beat. */
+  private updateKoSplatRain(songMs: number, visMs: number): void {
+    if (this.koAtMs === null) return;
+    if (songMs > this.koAtMs + KO_OVERLAY_DELAY_MS) return;
+    if (songMs - this.lastKoSplatMs < KO_SPLAT_RAIN_INTERVAL_MS) return;
+    this.lastKoSplatMs = songMs;
+    const splat = this.splats.add(visMs);
+    this.particles.burst(visMs, {
+      x: this.cx + (Math.random() - 0.5) * 120,
+      y: this.cy - 160,
+      count: 5,
+      colors: [splat.color],
+      speed: [30, 120],
+      lifeMs: [300, 550],
+      size: [2, 4],
+      gravity: 600,
+      angle: [Math.PI * 0.3, Math.PI * 0.7],
+    });
   }
 
   onDir(dir: Direction, audioTimeMs: number): void {
@@ -447,7 +488,7 @@ export class GameplayScreen implements Screen {
 
   private checkEnd(songMs: number): void {
     if (this.koAtMs !== null) {
-      if (!this.endOverlay.visible && songMs > this.koAtMs + KO_OVERLAY_DELAY_MS) {
+      if (!this.results.visible && songMs > this.koAtMs + KO_OVERLAY_DELAY_MS) {
         this.showEnd(`KO! ${this.monster.name} fainted from hunger`);
       }
       return;
@@ -459,22 +500,54 @@ export class GameplayScreen implements Screen {
     if (!chartDone && !this.conductor.ended) return;
 
     this.finished = true;
+    this.clearedAtMs = songMs;
     this.monster.celebrate();
     this.showEnd(`${this.monster.name} is stuffed and happy!`);
   }
 
   private showEnd(headline: string): void {
     const s = this.scoreState;
-    this.endText.text = [
+    this.lastResults = {
       headline,
-      '',
-      `score  ${s.score}`,
-      `accuracy  ${s.accuracy().toFixed(1)}%   max combo  ${s.maxCombo}`,
-      `perfect ${s.counts.perfect} · good ${s.counts.good} · okay ${s.counts.okay} · miss ${s.counts.miss}`,
-      '',
-      'R — retry     Esc — menu',
-    ].join('\n');
-    this.endOverlay.visible = true;
+      grade: gradeFor(s.accuracy(), s.isFullCombo),
+      score: s.score,
+      accuracyPct: s.accuracy(),
+      maxCombo: s.maxCombo,
+      counts: s.counts,
+      fullCombo: s.isFullCombo,
+    };
+    this.results.show(this.lastResults);
+  }
+
+  /** Build the share card from the monster's current state and export it. */
+  private handleShare(action: ShareAction): void {
+    const data = this.lastResults;
+    if (!data) return;
+    const card = buildShareCard({
+      grade: data.grade,
+      score: data.score,
+      accuracyPct: data.accuracyPct,
+      maxCombo: data.maxCombo,
+      songTitle: this.chart.song.title,
+      monsterName: this.monster.name,
+      headline: data.headline,
+      monsterTexture: this.monster.currentTexture,
+      splats: this.splats.specs,
+    });
+    const blobPromise = cardToBlob(this.renderer, card).finally(() =>
+      card.destroy({ children: true }),
+    );
+    if (action === 'download') {
+      void blobPromise
+        .then((blob) =>
+          downloadBlob(blob, `monster-feeder-${data.grade}.png`),
+        )
+        .catch((err) => console.error('share card download failed', err));
+    } else {
+      // The promise (not the blob) must reach ClipboardItem synchronously
+      // inside the click gesture — copyImageToClipboard does exactly that.
+      void copyImageToClipboard(blobPromise);
+    }
   }
 
   // Debug overlay accessors (main.ts)

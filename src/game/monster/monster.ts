@@ -18,6 +18,7 @@ import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import {
   animationDurationMs,
   frameAt,
+  REQUIRED_ANIMATIONS,
   type EyesDef,
   type FrameAnimation,
 } from '../../core/character';
@@ -31,17 +32,6 @@ const CHOMP_ANIM: Record<Direction, string> = {
   up: 'chomp_up',
   down: 'chomp_down',
 };
-
-const REQUIRED_ANIMATIONS = [
-  'idle',
-  'chomp_left',
-  'chomp_right',
-  'chomp_up',
-  'chomp_down',
-  'perfect',
-  'splat',
-  'ko',
-] as const;
 
 /** Escalation tiers, highest first; missing optional anims fall through. */
 const COMBO_TIERS: ReadonlyArray<{ min: number; anim: string }> = [

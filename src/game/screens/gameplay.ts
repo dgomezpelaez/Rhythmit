@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, type Renderer } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, type Renderer } from 'pixi.js';
 import type { Chart, Direction, Note } from '../../core/chart';
 import type { Conductor } from '../../core/conductor';
 import { Hitstop } from '../../core/hitstop';
@@ -7,6 +7,7 @@ import { ParticleSystem } from '../../core/particles';
 import { gradeFor, ScoreState } from '../../core/score';
 import { loadCalibrationOffsetMs } from '../../core/settings';
 import type { LoadedCharacter } from '../../core/sheet';
+import type { ChartFoods } from '../../mods/registry';
 import { Monster } from '../monster/monster';
 import { SplatLayer } from '../monster/splats';
 import {
@@ -61,17 +62,8 @@ const DIR_VECTORS: Record<Direction, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
 };
 
-const FOOD_COLORS: Record<Direction, string> = {
-  left: '#ffd166',
-  right: '#ff5c8a',
-  up: '#66d9ff',
-  down: '#9dff6b',
-};
-
-/** FOOD_COLORS as numeric tints for the particle system. */
-function foodTint(dir: Direction): number {
-  return Number.parseInt(FOOD_COLORS[dir].slice(1), 16);
-}
+/** Food sprite size when the food ships an image (fallback circle is r=18). */
+const FOOD_SPRITE_PX = 38;
 
 const JUDGMENT_STYLE: Record<Judgment, { label: string; color: string }> = {
   perfect: { label: 'PERFECT!', color: '#7cff6b' },
@@ -109,7 +101,7 @@ export class GameplayScreen implements Screen {
 
   private judge: HitJudge;
   private scoreState = new ScoreState();
-  private sprites = new Map<number, Graphics>();
+  private sprites = new Map<number, Container>();
   private missedAtMs = new Map<number, number>();
   private floatTexts: FloatText[] = [];
   private lastHitErrMs: number | null = null;
@@ -132,6 +124,7 @@ export class GameplayScreen implements Screen {
     private readonly chart: Chart,
     private readonly buffer: AudioBuffer,
     character: LoadedCharacter,
+    private readonly foods: ChartFoods,
     audio: AudioContext,
     private readonly renderer: Renderer,
     stageWidth: number,
@@ -254,7 +247,10 @@ export class GameplayScreen implements Screen {
         this.monster.setCombo(this.scoreState.combo);
         this.hunger = Math.max(0, this.hunger - HUNGER_MISS);
         this.spawnFloatText('miss', this.chart.notes[noteIndex]!, visMs);
-        const splat = this.splats.add(visMs);
+        const splat = this.splats.add(
+          visMs,
+          this.foods.forNote(this.chart.notes[noteIndex]!).tint,
+        );
         this.particles.burst(visMs, {
           x: this.cx,
           y: this.cy - MOUTH_OFFSET_PX,
@@ -303,7 +299,7 @@ export class GameplayScreen implements Screen {
           x: this.cx + (Math.random() - 0.5) * 300,
           y: this.cy - 200,
           count: 14,
-          colors: (['left', 'right', 'up', 'down'] as const).map(foodTint),
+          colors: Object.values(this.foods.dirTints),
           speed: [40, 180],
           lifeMs: [700, 1200],
           size: [3, 6],
@@ -360,7 +356,7 @@ export class GameplayScreen implements Screen {
       x: this.cx,
       y: this.cy,
       count: BURST_COUNT[hit.judgment],
-      colors: [foodTint(dir), 0xffffff],
+      colors: [this.foods.forNote(this.chart.notes[hit.noteIndex]!).tint, 0xffffff],
       speed: [120, 320],
       lifeMs: [280, 520],
       size: [2, 5],
@@ -388,7 +384,17 @@ export class GameplayScreen implements Screen {
 
       let sprite = this.sprites.get(i);
       if (!sprite) {
-        sprite = new Graphics().circle(0, 0, 18).fill(FOOD_COLORS[note.dir]);
+        const visual = this.foods.forNote(note);
+        if (visual.texture) {
+          const food = new Sprite(visual.texture);
+          food.anchor.set(0.5);
+          const scale =
+            FOOD_SPRITE_PX / Math.max(visual.texture.width, visual.texture.height);
+          food.scale.set(scale);
+          sprite = food;
+        } else {
+          sprite = new Graphics().circle(0, 0, 18).fill(visual.tint);
+        }
         this.sprites.set(i, sprite);
         this.noteLayer.addChild(sprite);
       }

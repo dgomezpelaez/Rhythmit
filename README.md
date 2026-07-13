@@ -22,16 +22,30 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
-## Current state (Phase 4 — juice & engagement)
+## Current state (Phase 5 — modding system)
 
 Click/press any key to start audio, then:
 
-- **`Enter`** — play the built-in 30-second test song (128 BPM synth groove,
-  72 notes). Food flies at **Chompo**, the default monster, from four
-  directions; press the matching **arrow key** as it reaches the mouth.
+- **Song select is home**: pick a song (`↑/↓` + `Enter`), then a monster —
+  both lists show built-in and modded content side by side, with a live idle
+  preview on the monster screen. Selections persist across sessions.
+- **Mods — drop a folder or .zip anywhere on the window** (or press **`M`**
+  for the Mods panel and its `.zip` picker). Mods are validated on the spot;
+  every problem is reported with the exact file and field ("`chompo.json:
+  animation 'chomp_left' missing`"), and valid mods are stored in IndexedDB
+  so they survive reloads. Re-drop the same mod id to update it; remove from
+  the panel. A complete generated example lives in
+  [`examples/sample-mod/`](examples/sample-mod/) (the Blobby monster, the
+  Bounce song, the Pepper food) and the full format reference is
+  [`MODDING.md`](MODDING.md): songs (chart + audio), characters
+  (spritesheet + JSON) and custom **foods** (sprite + splat color) — all
+  plain files, zero code, no build step.
+- **Gameplay**: food flies at the monster from four directions; press the
+  matching **arrow key** as it reaches the mouth. The built-in 30-second
+  test song (128 BPM synth groove, 72 notes) ships as before.
   Timing grades: Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss.
   Score, combo and accuracy in the HUD.
-  **`R`** — instant retry. **`Esc`** — back to the menu.
+  **`R`** — instant retry. **`Esc`** — back to song select.
 - **Chompo reacts to everything**: directional chomps (perfects chain into a
   starry-eyed flourish), splats on misses, escalating expressions at combo
   10/25 and fever mode at 50, and its eyes track the nearest incoming food.
@@ -50,8 +64,8 @@ Click/press any key to start audio, then:
   S bar), accuracy, max combo, per-judgment counts, and one-tap **save /
   copy** of a 1200×630 share card showing the monster's actual final state —
   glorious or food-covered.
-- **Metronome screen** (default): 120 BPM clicks with a puck that lands on
-  the hit line every beat — the drift test. Tap `space`/click on the beat to
+- **`B`** — metronome screen: 120 BPM clicks with a puck that lands on the
+  hit line every beat — the drift test. Tap `space`/click on the beat to
   see your timing error in ms.
 - **`C`** — latency calibration: tap along at 90 BPM (4 warm-up + 12 counted
   taps); the average offset is stored in localStorage and applied to all

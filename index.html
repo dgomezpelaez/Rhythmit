@@ -78,6 +78,119 @@
         opacity: 0.5;
         cursor: default;
       }
+      #mods-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(560px, calc(100vw - 48px));
+        max-height: calc(100vh - 96px);
+        overflow-y: auto;
+        background: #1d1d2c;
+        border: 1px solid #3d3d5c;
+        border-radius: 12px;
+        padding: 20px 24px;
+        color: #e8e8f2;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+      }
+      #mods-panel.hidden {
+        display: none;
+      }
+      #mods-panel h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      #mods-close {
+        cursor: pointer;
+        color: #9a9ab0;
+        font-size: 22px;
+        line-height: 1;
+        padding: 2px 6px;
+      }
+      #mods-close:hover {
+        color: #ffffff;
+      }
+      #mods-drop-hint {
+        color: #9a9ab0;
+        font-size: 13px;
+        margin: 4px 0 12px;
+      }
+      #mods-list {
+        list-style: none;
+        margin: 12px 0;
+        padding: 0;
+      }
+      #mods-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        background: #26263a;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+      #mods-list .mod-meta {
+        color: #9a9ab0;
+        font-size: 12px;
+      }
+      #mods-list button {
+        background: #3a2530;
+        color: #ff9db4;
+        border: 1px solid #5c3d4a;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      #mods-list button:hover {
+        background: #4a2f3d;
+      }
+      #mod-errors {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 10px 12px;
+        max-height: 180px;
+        overflow-y: auto;
+        background: #2c1d22;
+        border: 1px solid #5c3d4a;
+        border-radius: 8px;
+        color: #ff9db4;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+      #mod-errors.hidden {
+        display: none;
+      }
+      #mod-errors li {
+        margin: 2px 0;
+        white-space: pre-wrap;
+      }
+      #mod-status {
+        margin-top: 10px;
+        min-height: 18px;
+        font-size: 13px;
+        color: #8be28b;
+      }
+      body.mod-dragover::after {
+        content: 'drop mod folder or .zip to install';
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(122, 92, 255, 0.25);
+        border: 3px dashed #7a5cff;
+        font-size: 24px;
+        color: #ffffff;
+        pointer-events: none;
+        z-index: 10;
+      }
     </style>
   </head>
   <body>
@@ -87,6 +200,16 @@
     <div id="share-actions" class="hidden">
       <button id="btn-save" type="button">save card 📸</button>
       <button id="btn-copy" type="button">copy card 📋</button>
+    </div>
+    <div id="mods-panel" class="hidden">
+      <h2>Mods <span id="mods-close" title="close (M)">×</span></h2>
+      <p id="mods-drop-hint">
+        Drop a mod folder or .zip anywhere in the window — or pick a .zip:
+      </p>
+      <input id="mod-file-input" type="file" accept=".zip" />
+      <ul id="mods-list"></ul>
+      <ul id="mod-errors" class="hidden"></ul>
+      <div id="mod-status"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

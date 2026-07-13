@@ -14,7 +14,7 @@
  * positions — overlay pupils that track the nearest incoming food.
  */
 
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import {
   animationDurationMs,
   frameAt,
@@ -110,6 +110,20 @@ export class Monster {
 
   get name(): string {
     return this.character.def.name;
+  }
+
+  /**
+   * Mount an overlay (e.g. splat decals) inside the scaled body, above the
+   * sprite and pupils — it rides the squash-and-stretch pulse and survives
+   * animation texture swaps. The child's coordinates are frame-local px.
+   */
+  attachOverlay(child: Container): void {
+    this.body.addChild(child);
+  }
+
+  /** The texture currently on screen — lets the share card show the exact final state. */
+  get currentTexture(): Texture {
+    return this.sprite.texture;
   }
 
   reset(): void {

@@ -22,7 +22,7 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
-## Current state (Phase 3 — the monster)
+## Current state (Phase 4 — juice & engagement)
 
 Click/press any key to start audio, then:
 
@@ -30,7 +30,7 @@ Click/press any key to start audio, then:
   72 notes). Food flies at **Chompo**, the default monster, from four
   directions; press the matching **arrow key** as it reaches the mouth.
   Timing grades: Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss.
-  Score, combo and accuracy in the HUD; results overlay at the end.
+  Score, combo and accuracy in the HUD.
   **`R`** — instant retry. **`Esc`** — back to the menu.
 - **Chompo reacts to everything**: directional chomps (perfects chain into a
   starry-eyed flourish), splats on misses, escalating expressions at combo
@@ -39,6 +39,17 @@ Click/press any key to start audio, then:
   Chompo is defined entirely by the `character.json` contract (spritesheet
   grid + JSON, zero code); its sheet and voice clips are generated at
   runtime, so a real art pass is a drop-in replacement.
+- **Hits feel like hits**: a Perfect freezes the picture for 2–3 frames
+  (audio never pauses — only the visual clock clamps), food-colored
+  particle bursts scale with the judgment, floating labels pop in, and the
+  whole play field breathes subtly on every downbeat.
+- **Misses stay funny**: missed food *splats onto Chompo's face and stays
+  there*, piling up over the song. Clear the song for a celebration with
+  beat-synced confetti; starve to zero for a KO with a splat-rain finale.
+- **Results & share card**: letter grade (S/A/B/C — a full combo lowers the
+  S bar), accuracy, max combo, per-judgment counts, and one-tap **save /
+  copy** of a 1200×630 share card showing the monster's actual final state —
+  glorious or food-covered.
 - **Metronome screen** (default): 120 BPM clicks with a puck that lands on
   the hit line every beat — the drift test. Tap `space`/click on the beat to
   see your timing error in ms.

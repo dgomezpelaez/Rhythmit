@@ -52,4 +52,18 @@ export class ScoreState {
       this.counts.okay * ACC_WEIGHT.okay;
     return (weighted / this.judged) * 100;
   }
+
+  get isFullCombo(): boolean {
+    return this.counts.miss === 0 && this.judged > 0;
+  }
+}
+
+export type Grade = 'S' | 'A' | 'B' | 'C';
+
+/** Letter grade from weighted accuracy; a clean full combo nudges S down to 92. */
+export function gradeFor(accuracyPct: number, fullCombo = false): Grade {
+  if (accuracyPct >= 95 || (fullCombo && accuracyPct >= 92)) return 'S';
+  if (accuracyPct >= 85) return 'A';
+  if (accuracyPct >= 70) return 'B';
+  return 'C';
 }

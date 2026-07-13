@@ -35,6 +35,8 @@ export interface Chart {
   version: number;
   song: SongMeta;
   difficulty: string;
+  /** Optional default food id per direction (note.food overrides). */
+  foods?: Partial<Record<Direction, string>>;
   notes: Note[];
 }
 
@@ -66,6 +68,18 @@ export function parseChart(json: unknown): Chart {
     root['difficulty'] === undefined
       ? 'normal'
       : requireString(root['difficulty'], 'difficulty');
+
+  let foods: Partial<Record<Direction, string>> | undefined;
+  if (root['foods'] !== undefined) {
+    const foodsRaw = requireObject(root['foods'], 'foods');
+    foods = {};
+    for (const [key, value] of Object.entries(foodsRaw)) {
+      if (!DIRECTIONS.includes(key as Direction)) {
+        fail(`foods.${key}`, `"${key}" is not one of ${DIRECTIONS.join('/')}`);
+      }
+      foods[key as Direction] = requireString(value, `foods.${key}`);
+    }
+  }
 
   const notesRaw = root['notes'];
   if (!Array.isArray(notesRaw)) fail('notes', 'expected an array');
@@ -106,5 +120,7 @@ export function parseChart(json: unknown): Chart {
 
   notes.sort((a, b) => a.timeMs - b.timeMs);
 
-  return { version, song, difficulty, notes };
+  const chart: Chart = { version, song, difficulty, notes };
+  if (foods) chart.foods = foods;
+  return chart;
 }

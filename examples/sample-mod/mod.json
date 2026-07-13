@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "sample-mod",
+  "name": "Sample Mod",
+  "author": "Monster Feeder",
+  "songs": [
+    "songs/bounce/chart.json"
+  ],
+  "characters": [
+    "characters/blobby/character.json"
+  ],
+  "foods": [
+    "foods/foods.json"
+  ]
+}

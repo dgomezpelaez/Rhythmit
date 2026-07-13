@@ -44,6 +44,21 @@ export interface EyesDef {
   hiddenDuring: readonly string[];
 }
 
+/**
+ * Animations the game plays unconditionally — a character without all of
+ * these is rejected at load time. Optional extras: combo_10, combo_25, fever.
+ */
+export const REQUIRED_ANIMATIONS = [
+  'idle',
+  'chomp_left',
+  'chomp_right',
+  'chomp_up',
+  'chomp_down',
+  'perfect',
+  'splat',
+  'ko',
+] as const;
+
 export interface CharacterDef {
   id: string;
   name: string;

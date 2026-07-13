@@ -16,4 +16,8 @@ export interface Screen {
   onTap?(audioTimeMs: number): void;
   /** Directional input (arrows). Preferred over onTap when present. */
   onDir?(dir: Direction, audioTimeMs: number): void;
+  /** Enter/confirm on menu-like screens. */
+  onConfirm?(): void;
+  /** One-line state summary for the debug overlay (headless observability). */
+  debugLabel?(): string;
 }

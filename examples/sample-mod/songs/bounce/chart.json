@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "song": {
+    "title": "Bounce",
+    "artist": "Sample Mod",
+    "audio": "bounce.wav",
+    "bpm": 120,
+    "offsetMs": 0
+  },
+  "difficulty": "normal",
+  "foods": {
+    "down": "pepper"
+  },
+  "notes": [
+    {
+      "timeMs": 2000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 2500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 3000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 3500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 4000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 4500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 5000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 5500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 6000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 6500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 7000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 7500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 8000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 8500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 9000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 9500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 10000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 10500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 11000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 11250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 11500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 12000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 12500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 13000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 13250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 13500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 14000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 14500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 15000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 15250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 15500,
+      "dir": "right"
+    },
+    {
+      "timeMs": 16000,
+      "dir": "down",
+      "food": "pepper"
+    },
+    {
+      "timeMs": 16500,
+      "dir": "left"
+    },
+    {
+      "timeMs": 17000,
+      "dir": "up"
+    },
+    {
+      "timeMs": 17250,
+      "dir": "down"
+    },
+    {
+      "timeMs": 17500,
+      "dir": "right"
+    }
+  ]
+}

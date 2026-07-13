@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "foods": [
+    {
+      "id": "pepper",
+      "name": "Pepper",
+      "color": "#ff4422",
+      "image": "pepper.png"
+    }
+  ]
+}

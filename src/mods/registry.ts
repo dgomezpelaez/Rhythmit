@@ -69,6 +69,15 @@ interface RegisteredMod {
 }
 
 const BUILT_IN_SOURCE = 'built-in';
+const AUTOCHART_SOURCE = 'auto-chart';
+
+/** What registerAutochart needs — matches StoredAutochart minus addedAt. */
+export interface AutochartRecord {
+  hash: string;
+  fileName: string;
+  audio: Blob;
+  charts: Readonly<Record<string, Chart>>;
+}
 
 export class ContentRegistry {
   private builtInSongs: SongEntry[] = [];
@@ -78,11 +87,14 @@ export class ContentRegistry {
   );
   /** Insertion order = registration order; built-ins listed first. */
   private readonly mods = new Map<string, RegisteredMod>();
+  /** Auto-charted songs, keyed by audio hash; listed after mods. */
+  private readonly autocharts = new Map<string, SongEntry[]>();
 
   get songs(): readonly SongEntry[] {
     return [
       ...this.builtInSongs,
       ...[...this.mods.values()].flatMap((m) => m.songs),
+      ...[...this.autocharts.values()].flat(),
     ];
   }
 
@@ -195,6 +207,35 @@ export class ContentRegistry {
     }
 
     this.mods.set(modId, mod);
+  }
+
+  /**
+   * Register an auto-charted song: one SongEntry per difficulty, all sharing
+   * the same lazily-decoded audio Blob. Re-registering a hash replaces it.
+   */
+  registerAutochart(rec: AutochartRecord): void {
+    // decodeAudioData detaches its buffer — blob.arrayBuffer() is fresh per
+    // call, and cached() ensures we decode once per entry set.
+    const loadAudio = cached(async (ctx: AudioContext) =>
+      ctx.decodeAudioData(await rec.audio.arrayBuffer()),
+    );
+    this.autocharts.set(
+      rec.hash,
+      Object.entries(rec.charts).map(([difficulty, chart]) => ({
+        id: `autochart:${rec.hash}:${difficulty}`,
+        title: chart.song.title,
+        artist: chart.song.artist,
+        difficulty,
+        source: AUTOCHART_SOURCE,
+        modId: null,
+        chart,
+        loadAudio,
+      })),
+    );
+  }
+
+  removeAutochart(hash: string): void {
+    this.autocharts.delete(hash);
   }
 
   removeMod(modId: string): void {

@@ -11,11 +11,11 @@ import { GameplayScreen } from './game/screens/gameplay';
 import { MetronomeScreen } from './game/screens/metronome';
 import type { Screen } from './game/screens/screen';
 import { SongSelectScreen } from './game/screens/songselect';
-import { idbGetAllMods } from './mods/db';
+import { idbGetAllAutocharts, idbGetAllMods, type StoredAutochart } from './mods/db';
 import { initModPanel, summarize } from './mods/panel';
 import { ContentRegistry, type CharacterEntry, type SongEntry } from './mods/registry';
 import { validateMod } from './mods/validate';
-import { synthesizeTestTrack } from './game/testtrack';
+import { encodeWavMono, synthesizeTestTrack, TEST_TRACK_BPM } from './game/testtrack';
 
 const STAGE_WIDTH = 960;
 const STAGE_HEIGHT = 540;
@@ -200,6 +200,18 @@ async function bootstrap(): Promise<void> {
       }
     }
     panel.refreshList(installedRows);
+
+    // Auto-charted songs persist like mods: re-register from IndexedDB.
+    let storedCharts: StoredAutochart[] = [];
+    if (persistent) {
+      try {
+        storedCharts = await idbGetAllAutocharts();
+      } catch (e) {
+        console.error('stored auto-charts failed to load', e);
+      }
+    }
+    bootErrors.push(...panel.restoreAutocharts(storedCharts));
+
     if (bootErrors.length > 0) {
       const status = document.querySelector('#mod-status');
       if (status) status.textContent = bootErrors[0]!;
@@ -208,6 +220,54 @@ async function bootstrap(): Promise<void> {
 
     songSelect.refresh();
     switchTo(songSelect);
+
+    // Debug hook: run the synthesized 128 BPM test track through the whole
+    // auto-chart pipeline (file import → worker → registry) and measure how
+    // well detected notes line up with the known beat grid. The encoded WAV
+    // is memoized because OfflineAudioContext rendering is not bit-stable —
+    // a repeat call must present identical bytes to exercise the hash cache.
+    let selfTestWav: ArrayBuffer | null = null;
+    (window as unknown as Record<string, unknown>)['__autochartSelfTest'] =
+      async () => {
+        selfTestWav ??= encodeWavMono(await synthesizeTestTrack());
+        const file = new File([selfTestWav], 'autochart-selftest.wav', { type: 'audio/wav' });
+        await panel.importAudioFile(file);
+
+        const generated = registry.songs.filter(
+          (s) => s.source === 'auto-chart' && s.title === 'autochart-selftest',
+        );
+        if (generated.length === 0) return { ok: false, error: 'no charts generated' };
+
+        const beatMs = 60000 / TEST_TRACK_BPM;
+        const hard = generated.find((s) => s.difficulty === 'hard') ?? generated[0]!;
+        // Signed distance to the nearest true beat: positive = note is late.
+        const downErrors = hard.chart.notes
+          .filter((n) => n.dir === 'down')
+          .map((n) => {
+            const mod = n.timeMs % beatMs;
+            return mod <= beatMs / 2 ? mod : mod - beatMs;
+          });
+        const meanAbsErrMs =
+          downErrors.reduce((a, b) => a + Math.abs(b), 0) /
+          Math.max(1, downErrors.length);
+        const signedMeanMs =
+          downErrors.reduce((a, b) => a + b, 0) / Math.max(1, downErrors.length);
+        const within25 =
+          downErrors.filter((e) => Math.abs(e) <= 25).length /
+          Math.max(1, downErrors.length);
+
+        return {
+          ok: true,
+          bpm: hard.chart.song.bpm,
+          noteCounts: Object.fromEntries(
+            generated.map((s) => [s.difficulty, s.chart.notes.length]),
+          ),
+          downNotes: downErrors.length,
+          meanAbsErrMs: Math.round(meanAbsErrMs * 10) / 10,
+          signedMeanMs: Math.round(signedMeanMs * 10) / 10,
+          within25msFrac: Math.round(within25 * 100) / 100,
+        };
+      };
   };
 
   const unlock = async (e: Event) => {

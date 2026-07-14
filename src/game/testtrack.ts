@@ -33,10 +33,47 @@ export async function synthesizeTestTrack(): Promise<AudioBuffer> {
   return ctx.startRendering();
 }
 
+/**
+ * Encode channel 0 as a 16-bit PCM WAV — lets the test track flow through
+ * the real file-import path (auto-chart self-test).
+ */
+export function encodeWavMono(buffer: AudioBuffer): ArrayBuffer {
+  const data = buffer.getChannelData(0);
+  const out = new ArrayBuffer(44 + data.length * 2);
+  const view = new DataView(out);
+  const writeAscii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+  writeAscii(0, 'RIFF');
+  view.setUint32(4, 36 + data.length * 2, true);
+  writeAscii(8, 'WAVE');
+  writeAscii(12, 'fmt ');
+  view.setUint32(16, 16, true); // PCM chunk size
+  view.setUint16(20, 1, true); // PCM format
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  writeAscii(36, 'data');
+  view.setUint32(40, data.length * 2, true);
+  for (let i = 0; i < data.length; i++) {
+    const s = Math.max(-1, Math.min(1, data[i]!));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return out;
+}
+
 function makeNoiseBuffer(ctx: OfflineAudioContext): AudioBuffer {
   const buffer = ctx.createBuffer(1, SAMPLE_RATE / 4, SAMPLE_RATE);
   const data = buffer.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  // Seeded LCG, not Math.random(): the rendered bytes must be identical on
+  // every run so the auto-chart cache (keyed by content hash) can be tested.
+  let seed = 0x9e3779b9;
+  for (let i = 0; i < data.length; i++) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    data[i] = (seed / 0xffffffff) * 2 - 1;
+  }
   return buffer;
 }
 

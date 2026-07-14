@@ -22,13 +22,23 @@ Vite (build).
 never `requestAnimationFrame` timestamps or `Date.now()`. rAF drives
 rendering only.
 
-## Current state (Phase 5 — modding system)
+## Current state (Phase 6 — auto-charting)
 
 Click/press any key to start audio, then:
 
 - **Song select is home**: pick a song (`↑/↓` + `Enter`), then a monster —
   both lists show built-in and modded content side by side, with a live idle
   preview on the monster screen. Selections persist across sessions.
+- **Feed it any song — drop an MP3/OGG/WAV anywhere on the window** and it
+  becomes playable: the audio is analyzed in a Web Worker (per-band spectral
+  flux onset detection with a progress bar) and three charts are generated —
+  easy, normal, hard. Kicks and bass hits land on `↓`, snares and vocals
+  alternate `←`/`→`, hi-hats and cymbals ride on `↑`. BPM and beat phase are
+  estimated for the downbeat effects. Results are cached in IndexedDB keyed
+  by the file's content hash — re-dropping the same file (or reloading) is
+  instant, and generated songs are removed from the Mods panel like mods.
+  Expect "pretty good, not hand-crafted" charts; an in-game editor for
+  perfectionists is a later phase.
 - **Mods — drop a folder or .zip anywhere on the window** (or press **`M`**
   for the Mods panel and its `.zip` picker). Mods are validated on the spot;
   every problem is reported with the exact file and field ("`chompo.json:

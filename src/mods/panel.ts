@@ -1,11 +1,13 @@
 /**
  * The Mods panel — DOM overlay (same pattern as #share-actions) that is the
- * whole mod-management surface: drop target feedback, .zip file input
- * fallback, installed-mod list with remove buttons, and the validation
- * error list when an import fails.
+ * whole content-management surface: drop target feedback, file input
+ * fallback, installed list with remove buttons, the validation error list
+ * when an import fails, and the auto-chart progress bar. Dropped .zip files
+ * and folders install as mods; dropped audio files are auto-charted.
  */
 
-import { idbDeleteMod, idbPutMod, type StoredMod } from './db';
+import { AUDIO_FILE_RE, createAutochartManager } from './autochart';
+import { idbDeleteMod, idbPutMod, type StoredAutochart, type StoredMod } from './db';
 import { fileMapFromDrop, fileMapFromInput } from './drop';
 import type { FileMap } from './files';
 import type { ContentRegistry } from './registry';
@@ -26,6 +28,10 @@ export interface ModPanel {
   readonly visible: boolean;
   /** Show installed mods loaded at boot. */
   refreshList(mods: ReadonlyArray<{ id: string; name: string; summary: string }>): void;
+  /** Register auto-charts stored in IndexedDB at boot; returns errors. */
+  restoreAutocharts(recs: readonly StoredAutochart[]): string[];
+  /** Auto-chart an audio file (also the headless-test entry point). */
+  importAudioFile(file: File): Promise<void>;
 }
 
 interface InstalledRow {
@@ -42,6 +48,9 @@ export function initModPanel(opts: ModPanelOptions): ModPanel {
   const errorsEl = document.querySelector('#mod-errors') as HTMLUListElement;
   const status = document.querySelector('#mod-status') as HTMLElement;
   const hint = document.querySelector('#mods-drop-hint') as HTMLElement;
+  const progress = document.querySelector('#autochart-progress') as HTMLElement;
+  const progressFill = document.querySelector('#autochart-progress-fill') as HTMLElement;
+  const progressLabel = document.querySelector('#autochart-progress-label') as HTMLElement;
 
   if (!opts.persistent) {
     hint.textContent +=
@@ -67,30 +76,71 @@ export function initModPanel(opts: ModPanelOptions): ModPanel {
     errorsEl.classList.toggle('hidden', errors.length === 0);
   };
 
+  const makeRow = (opts: {
+    key: string;
+    name: string;
+    summary: string;
+    onRemove: () => void;
+  }): HTMLLIElement => {
+    const li = document.createElement('li');
+    li.dataset['modId'] = opts.key;
+
+    const label = document.createElement('span');
+    label.textContent = opts.name + ' ';
+    const meta = document.createElement('span');
+    meta.className = 'mod-meta';
+    meta.textContent = opts.summary;
+    label.appendChild(meta);
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'mod-remove';
+    remove.textContent = 'remove';
+    remove.addEventListener('click', opts.onRemove);
+
+    li.append(label, remove);
+    return li;
+  };
+
   const renderList = () => {
     list.replaceChildren(
-      ...[...installed.values()].map((row) => {
-        const li = document.createElement('li');
-        li.dataset['modId'] = row.id;
-
-        const label = document.createElement('span');
-        label.textContent = row.name + ' ';
-        const meta = document.createElement('span');
-        meta.className = 'mod-meta';
-        meta.textContent = row.summary;
-        label.appendChild(meta);
-
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'mod-remove';
-        remove.textContent = 'remove';
-        remove.addEventListener('click', () => void removeMod(row.id));
-
-        li.append(label, remove);
-        return li;
-      }),
+      ...[...installed.values()].map((row) =>
+        makeRow({
+          key: row.id,
+          name: row.name,
+          summary: row.summary,
+          onRemove: () => void removeMod(row.id),
+        }),
+      ),
+      ...autochart.rows.map((row) =>
+        makeRow({
+          key: `autochart:${row.hash}`,
+          name: row.name,
+          summary: row.summary,
+          onRemove: () => void autochart.remove(row.hash),
+        }),
+      ),
     );
   };
+
+  const autochart = createAutochartManager({
+    registry: opts.registry,
+    audio: opts.audio,
+    persistent: opts.persistent,
+    ui: {
+      setStatus,
+      showErrors,
+      setProgress(state) {
+        progress.classList.toggle('hidden', state === null);
+        if (state) {
+          progressFill.style.width = `${state.percent}%`;
+          progressLabel.textContent = state.label;
+        }
+      },
+      renderRows: () => renderList(),
+      onContentChanged: () => opts.onContentChanged(),
+    },
+  });
 
   const removeMod = async (id: string) => {
     const name = installed.get(id)?.name ?? id;
@@ -171,20 +221,37 @@ export function initModPanel(opts: ModPanelOptions): ModPanel {
   window.addEventListener('dragleave', (e) => {
     if (e.relatedTarget === null) document.body.classList.remove('mod-dragover');
   });
+  // A single dropped audio file goes to the auto-charter; it may replace a
+  // running analysis but must not race a mod import.
+  const importAudio = async (file: File) => {
+    if (importing) return;
+    api.setVisible(true);
+    await autochart.importAudioFile(file);
+  };
+
   window.addEventListener('drop', (e) => {
     e.preventDefault();
     document.body.classList.remove('mod-dragover');
     const dt = e.dataTransfer;
     if (!dt) return;
-    // Entries must be snapshotted synchronously; fileMapFromDrop does so
-    // before its first await, so call it directly in the handler.
+    // Everything here must read dt synchronously — the DataTransferItemList
+    // is neutered as soon as the handler yields (getAsFile is sync-safe).
+    const items = Array.from(dt.items).filter((i) => i.kind === 'file');
+    const soleEntry = items.length === 1 ? items[0]!.webkitGetAsEntry() : null;
+    const soleFile = soleEntry?.isFile ? items[0]!.getAsFile() : null;
+    if (soleFile && AUDIO_FILE_RE.test(soleFile.name)) {
+      void importAudio(soleFile);
+      return;
+    }
     void importFiles(() => fileMapFromDrop(dt));
   });
 
   input.addEventListener('change', () => {
     const file = input.files?.[0];
     input.value = '';
-    if (file) void importFiles(() => fileMapFromInput(file));
+    if (!file) return;
+    if (AUDIO_FILE_RE.test(file.name)) void importAudio(file);
+    else void importFiles(() => fileMapFromInput(file));
   });
 
   close.addEventListener('click', () => api.setVisible(false));
@@ -204,6 +271,12 @@ export function initModPanel(opts: ModPanelOptions): ModPanel {
       for (const mod of mods) installed.set(mod.id, { ...mod });
       renderList();
     },
+    restoreAutocharts(recs) {
+      const errors = autochart.restore(recs);
+      renderList();
+      return errors;
+    },
+    importAudioFile: (file) => importAudio(file),
   };
   return api;
 }

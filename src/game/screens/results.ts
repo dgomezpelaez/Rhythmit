@@ -8,8 +8,7 @@
  */
 
 import { Container, Graphics, Text } from 'pixi.js';
-import type { Judgment } from '../../engine/judge';
-import type { Grade } from '../../engine/score';
+import type { Grade, Judgment } from '../../engine';
 
 export interface ResultsData {
   headline: string;

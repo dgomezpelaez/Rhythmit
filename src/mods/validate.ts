@@ -10,13 +10,15 @@
 import {
   assertFramesInRange,
   missingAnimations,
+  parseAtlas,
   parseCharacter,
+  parseChart,
+  type AtlasDef,
   type CharacterDef,
-} from '../engine/character';
-import { REQUIRED_ANIMATIONS } from '../game/monster/animations';
-import { parseChart, type Chart } from '../engine/chart';
+  type Chart,
+} from '../engine';
 import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../game/food';
-import { parseAtlas, type AtlasDef } from '../engine/atlas';
+import { REQUIRED_ANIMATIONS } from '../game/monster/animations';
 import { resolveRelative, type FileMap } from './files';
 import { parseModManifest, type ModManifest } from './manifest';
 

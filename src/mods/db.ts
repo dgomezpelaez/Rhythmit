@@ -5,8 +5,8 @@
  * and re-parsed on boot.
  */
 
-import type { Chart } from '../engine/chart';
-import type { AutoDifficulty } from '../engine/autochart/generate';
+import type { Chart } from '../engine';
+import type { AutoDifficulty } from '../engine/autochart';
 import type { ModManifest } from './manifest';
 
 const DB_NAME = 'mf-mods';

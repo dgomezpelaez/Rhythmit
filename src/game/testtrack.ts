@@ -4,7 +4,7 @@
  * the exact AudioBufferSourceNode playback path that real/modded songs use.
  */
 
-import { parseChart, type Chart, type Direction } from '../engine/chart';
+import { parseChart, type Chart, type Direction } from '../engine';
 
 export const TEST_TRACK_BPM = 128;
 export const TEST_TRACK_BARS = 16;

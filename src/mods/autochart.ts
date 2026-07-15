@@ -8,10 +8,10 @@
  * queue, so a cancel message would arrive too late to matter.
  */
 
-import { AUTO_DIFFICULTIES, type AutoDifficulty } from '../engine/autochart/generate';
-import type { AnalyzeRequest, WorkerReply } from '../engine/autochart/messages';
-import { createAutochartWorker } from '../engine/autochart/spawn';
-import { parseChart, type Chart } from '../engine/chart';
+import { AUTO_DIFFICULTIES, type AutoDifficulty } from '../engine/autochart';
+import type { AnalyzeRequest, WorkerReply } from '../engine/autochart';
+import { createAutochartWorker } from '../engine/autochart';
+import { parseChart, type Chart } from '../engine';
 import {
   idbDeleteAutochart,
   idbGetAutochart,

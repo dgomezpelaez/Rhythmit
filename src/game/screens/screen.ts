@@ -1,5 +1,5 @@
 import type { Container } from 'pixi.js';
-import type { Direction } from '../../engine/chart';
+import type { Direction } from '../../engine';
 
 /** Minimal screen contract — deliberately not a scene framework. */
 export interface Screen {

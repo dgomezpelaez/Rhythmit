@@ -13,10 +13,10 @@ import { Texture } from 'pixi.js';
 import {
   assertFramesInRange,
   parseCharacter,
+  type AtlasDef,
   type CharacterDef,
-} from '../../engine/character';
-import { sliceSheet, type LoadedCharacter } from '../../engine/pixi/sheet';
-import type { AtlasDef } from '../../engine/atlas';
+} from '../../engine';
+import { sliceSheet, type LoadedCharacter } from '../../engine/pixi';
 
 const SOURCE = 'chompo (built-in)';
 const FRAME = 128;

@@ -1,12 +1,18 @@
 import { Container, Graphics, Sprite, Text, type Renderer } from 'pixi.js';
-import type { Chart, Direction, Note } from '../../engine/chart';
-import type { Conductor } from '../../engine/conductor';
-import { Hitstop } from '../../engine/hitstop';
-import { HitJudge, WINDOWS, type Judgment } from '../../engine/judge';
-import { ParticleSystem } from '../../engine/pixi/particles';
-import { gradeFor, ScoreState } from '../../engine/score';
+import {
+  gradeFor,
+  HitJudge,
+  Hitstop,
+  ScoreState,
+  WINDOWS,
+  type Chart,
+  type Conductor,
+  type Direction,
+  type Judgment,
+  type Note,
+} from '../../engine';
+import { ParticleSystem, type LoadedCharacter } from '../../engine/pixi';
 import { loadCalibrationOffsetMs } from '../settings';
-import type { LoadedCharacter } from '../../engine/pixi/sheet';
 import type { ChartFoods } from '../../mods/registry';
 import { Monster } from '../monster/monster';
 import { SplatLayer } from '../monster/splats';

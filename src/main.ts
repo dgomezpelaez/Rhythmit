@@ -1,8 +1,11 @@
 import { Application } from 'pixi.js';
-import { AudioClock } from './engine/audio';
-import { parseChart, type Direction } from './engine/chart';
-import { Conductor } from './engine/conductor';
-import { startRenderLoop } from './engine/loop';
+import {
+  AudioClock,
+  Conductor,
+  parseChart,
+  startRenderLoop,
+  type Direction,
+} from './engine';
 import { loadCalibrationOffsetMs } from './game/settings';
 import { buildChompo } from './game/monster/chompo';
 import { CalibrationScreen } from './game/screens/calibration';

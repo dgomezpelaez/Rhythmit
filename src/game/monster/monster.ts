@@ -19,13 +19,13 @@ import {
   animationDurationMs,
   frameAt,
   missingAnimations,
+  type Direction,
   type EyesDef,
   type FrameAnimation,
-} from '../../engine/character';
+  type Judgment,
+} from '../../engine';
+import type { LoadedCharacter } from '../../engine/pixi';
 import { REQUIRED_ANIMATIONS } from './animations';
-import type { Direction } from '../../engine/chart';
-import type { Judgment } from '../../engine/judge';
-import type { LoadedCharacter } from '../../engine/pixi/sheet';
 
 const CHOMP_ANIM: Record<Direction, string> = {
   left: 'chomp_left',

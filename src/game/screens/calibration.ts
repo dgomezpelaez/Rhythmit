@@ -10,8 +10,12 @@ const OUTLIER_MS = 250;
 
 /**
  * Latency calibration: the player taps along with a metronome; the average
- * signed error IS their end-to-end latency (audio output + input + human),
- * and is stored as the offset applied to all future input timestamps.
+ * signed error is stored as the offset applied to all future input
+ * timestamps. Audio OUTPUT latency is compensated automatically (see
+ * Conductor.outputLatencyMs and the subtraction below), so what this screen
+ * measures is only input latency + human bias. Offsets saved before that
+ * compensation existed double-count output latency (10–40 ms on wired
+ * devices — within the Perfect window); re-calibrating once fixes it.
  */
 export class CalibrationScreen implements Screen {
   readonly view = new Container();
@@ -76,7 +80,9 @@ export class CalibrationScreen implements Screen {
   }
 
   update(): void {
-    const phase = ((this.conductor.beatAt() % 1) + 1) % 1;
+    // Display clock: pulse when the click is heard.
+    const phase =
+      ((this.conductor.beatAt(this.conductor.displayTimeMs()) % 1) + 1) % 1;
     const decay = Math.max(0, 1 - phase / 0.3);
     this.pulse.alpha = 0.25 + 0.75 * decay;
     this.pulse.scale.set(1 + 0.25 * (1 - decay));
@@ -93,9 +99,11 @@ export class CalibrationScreen implements Screen {
   onTap(audioTimeMs: number): void {
     if (this.done) return;
 
-    // Song-clock delta vs the actual beat grid; no calibration subtraction
-    // here — this screen is the one measuring that offset.
-    const songMs = this.conductor.toSongTimeMs(audioTimeMs);
+    // Song-clock delta vs the actual beat grid; output latency is subtracted
+    // (it's known), but no calibration subtraction — this screen is the one
+    // measuring that offset.
+    const songMs =
+      this.conductor.toSongTimeMs(audioTimeMs) - this.conductor.outputLatencyMs();
     const delta = songMs - this.conductor.nearestBeatMs(songMs);
     this.tapCount += 1;
     this.lastTap.text = `${delta > 0 ? '+' : ''}${delta.toFixed(0)} ms`;

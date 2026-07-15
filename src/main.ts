@@ -15,7 +15,12 @@ import { idbGetAllAutocharts, idbGetAllMods, type StoredAutochart } from './mods
 import { initModPanel, summarize } from './mods/panel';
 import { ContentRegistry, type CharacterEntry, type SongEntry } from './mods/registry';
 import { validateMod } from './mods/validate';
-import { encodeWavMono, synthesizeTestTrack, TEST_TRACK_BPM } from './game/testtrack';
+import {
+  buildEasyTestChart,
+  encodeWavMono,
+  synthesizeTestTrack,
+  TEST_TRACK_BPM,
+} from './game/testtrack';
 
 const STAGE_WIDTH = 960;
 const STAGE_HEIGHT = 540;
@@ -116,9 +121,16 @@ async function bootstrap(): Promise<void> {
       if (!response.ok) {
         throw new Error(`chart fetch failed: HTTP ${response.status}`);
       }
+      const testChart = parseChart(await response.json());
       registry.registerBuiltInSong({
         key: 'test',
-        chart: parseChart(await response.json()),
+        chart: testChart,
+        loadAudio: () => synthesizeTestTrack(),
+      });
+      // Gentle on-ramp: same track, one note per beat.
+      registry.registerBuiltInSong({
+        key: 'test-easy',
+        chart: buildEasyTestChart(testChart),
         loadAudio: () => synthesizeTestTrack(),
       });
     } catch (e) {
@@ -343,6 +355,7 @@ async function bootstrap(): Promise<void> {
           lines.push(
             `song     ${(songMs / 1000).toFixed(3)}s`,
             `beat     ${Math.floor(conductor.beatAt(songMs))} @ ${conductor.bpm} BPM`,
+            `out lat  ${conductor.outputLatencyMs().toFixed(0)} ms`,
           );
         }
         if (current === gameplay && gameplay) {

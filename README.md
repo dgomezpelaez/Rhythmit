@@ -51,8 +51,13 @@ Click/press any key to start audio, then:
   (spritesheet + JSON) and custom **foods** (sprite + splat color) — all
   plain files, zero code, no build step.
 - **Gameplay**: food flies at the monster from four directions; press the
-  matching **arrow key** as it reaches the mouth. The built-in 30-second
-  test song (128 BPM synth groove, 72 notes) ships as before.
+  matching **arrow key** exactly as the food fills the **target ring** at
+  the monster's mouth — the ring pulses on every beat and the food grows to
+  full size at the moment to press. Audio output latency is compensated
+  automatically, so sight and sound stay aligned even on laggy outputs.
+  The built-in 30-second test song (128 BPM synth groove, 72 notes) ships
+  as before, plus a gentler "Test Groove (easy)" variant (one note per
+  beat) as an on-ramp.
   Timing grades: Perfect ±45 ms · Good ±90 ms · Okay ±135 ms · else Miss.
   Score, combo and accuracy in the HUD.
   **`R`** — instant retry. **`Esc`** — back to song select.

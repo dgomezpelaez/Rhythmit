@@ -70,7 +70,9 @@ export class MetronomeScreen implements Screen {
   }
 
   update(): void {
-    const beat = this.conductor.beatAt();
+    // Display clock: the puck lands when the click is HEARD, not when the
+    // context schedules it.
+    const beat = this.conductor.beatAt(this.conductor.displayTimeMs());
     // Phase within the current beat: 0 = on the beat, →1 = next beat.
     const phase = ((beat % 1) + 1) % 1;
 
@@ -94,8 +96,12 @@ export class MetronomeScreen implements Screen {
 
   onTap(audioTimeMs: number): void {
     // Convert to song time first — the beat grid lives on the song clock.
+    // Output latency is subtracted the same way gameplay judges input: a
+    // player tapping to the heard click taps that much late on this clock.
     const songMs =
-      this.conductor.toSongTimeMs(audioTimeMs) - loadCalibrationOffsetMs();
+      this.conductor.toSongTimeMs(audioTimeMs) -
+      this.conductor.outputLatencyMs() -
+      loadCalibrationOffsetMs();
     this.lastTapErrorMs = songMs - this.conductor.nearestBeatMs(songMs);
   }
 

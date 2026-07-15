@@ -4,10 +4,37 @@
  * the exact AudioBufferSourceNode playback path that real/modded songs use.
  */
 
+import { parseChart, type Chart, type Direction } from '../core/chart';
+
 export const TEST_TRACK_BPM = 128;
 export const TEST_TRACK_BARS = 16;
 
 const SAMPLE_RATE = 44100;
+
+/**
+ * A gentle on-ramp variant of the built-in chart: one note per beat
+ * (quarter notes only), rotating directions, same synthesized track.
+ */
+export function buildEasyTestChart(base: Chart): Chart {
+  const beatMs = 60000 / TEST_TRACK_BPM;
+  const dirs: readonly Direction[] = ['down', 'left', 'up', 'right'];
+  const firstBeat = 8; // matches the main chart's first note (bar 3)
+  const lastBeat = TEST_TRACK_BARS * 4 - 2; // leave the final bar to breathe
+  const notes = [];
+  for (let beat = firstBeat; beat <= lastBeat; beat++) {
+    notes.push({
+      timeMs: Math.round(beat * beatMs),
+      dir: dirs[(beat - firstBeat) % dirs.length]!,
+      type: 'tap' as const,
+    });
+  }
+  return parseChart({
+    version: 1,
+    song: { ...base.song, title: `${base.song.title} (easy)` },
+    difficulty: 'easy',
+    notes,
+  });
+}
 
 export async function synthesizeTestTrack(): Promise<AudioBuffer> {
   const beatS = 60 / TEST_TRACK_BPM;

@@ -29,6 +29,8 @@ export class Conductor {
   private nextBeatToSchedule = 0;
   private schedulerId: number | null = null;
   private source: AudioBufferSourceNode | null = null;
+  private outputLatencyMsValue = 0;
+  private lastLatencyPollCtxS = -Infinity;
 
   constructor(private readonly ctx: AudioContext) {}
 
@@ -96,6 +98,31 @@ export class Conductor {
   /** Song time in ms. Negative during the lead-in, before time zero. */
   songTimeMs(): number {
     return (this.ctx.currentTime - this.startCtxTime) * 1000;
+  }
+
+  /**
+   * Estimated delay between ctx.currentTime and the sound reaching the ear.
+   * This is a display/judgment offset, NOT a second clock — all timing still
+   * derives solely from AudioContext.currentTime; this only shifts where
+   * "now" is drawn and how input timestamps map onto the chart. Polled at
+   * most once per second: outputLatency changes when output devices switch,
+   * and is 0/undefined in some browsers.
+   */
+  outputLatencyMs(): number {
+    const nowS = this.ctx.currentTime;
+    if (nowS - this.lastLatencyPollCtxS >= 1) {
+      this.lastLatencyPollCtxS = nowS;
+      // `||` not `??`: a reported 0 falls through to the next estimate.
+      const rawS = this.ctx.outputLatency || this.ctx.baseLatency || 0;
+      const ms = Number.isFinite(rawS) ? rawS * 1000 : 0;
+      this.outputLatencyMsValue = Math.min(500, Math.max(0, ms));
+    }
+    return this.outputLatencyMsValue;
+  }
+
+  /** Song time as the player perceives it (audible "now"). Render to this. */
+  displayTimeMs(): number {
+    return this.songTimeMs() - this.outputLatencyMs();
   }
 
   /** Map an absolute audio-clock time (AudioClock ms) to song time. */

@@ -24,7 +24,7 @@ import {
 } from '../../engine/character';
 import type { Direction } from '../../engine/chart';
 import type { Judgment } from '../../engine/judge';
-import type { LoadedCharacter } from '../../engine/sheet';
+import type { LoadedCharacter } from '../../engine/pixi/sheet';
 
 const CHOMP_ANIM: Record<Direction, string> = {
   left: 'chomp_left',

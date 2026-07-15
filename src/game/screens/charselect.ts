@@ -11,7 +11,7 @@ import {
   loadSelectedCharacterId,
   saveSelectedCharacterId,
 } from '../../engine/settings';
-import type { LoadedCharacter } from '../../engine/sheet';
+import type { LoadedCharacter } from '../../engine/pixi/sheet';
 import type { CharacterEntry, ContentRegistry } from '../../mods/registry';
 import { ListView } from './listview';
 import type { Screen } from './screen';

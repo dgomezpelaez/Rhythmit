@@ -1,30 +1,12 @@
 /**
- * Spritesheet slicing. The atlas format is deliberately minimal: a uniform
- * grid described by frameWidth/frameHeight. Animations reference frames by
- * row-major grid index, which keeps character.json hand-writable.
+ * Spritesheet slicing — the Pixi-dependent half of the atlas story. The
+ * grid format itself is parsed in ../atlas.ts (pure JSON, no Pixi).
  */
 
 import { Rectangle, Texture, type TextureSource } from 'pixi.js';
-import type { CharacterDef } from './character';
-import { requireFiniteNumber, requireObject, ValidationError } from './validate';
-
-export interface AtlasDef {
-  frameWidth: number;
-  frameHeight: number;
-}
-
-/** Parse and validate an atlas.json. Throws with a readable message. */
-export function parseAtlas(json: unknown, source = 'atlas.json'): AtlasDef {
-  const root = requireObject(json, source);
-  const dim = (key: string): number => {
-    const n = requireFiniteNumber(root[key], `${source}: ${key}`);
-    if (!Number.isInteger(n) || n <= 0) {
-      throw new ValidationError(`${source}: ${key}: expected a positive integer`);
-    }
-    return n;
-  };
-  return { frameWidth: dim('frameWidth'), frameHeight: dim('frameHeight') };
-}
+import type { AtlasDef } from '../atlas';
+import type { CharacterDef } from '../character';
+import { ValidationError } from '../validate';
 
 /** Slice a sheet into per-frame textures, row-major. */
 export function sliceSheet(source: TextureSource, atlas: AtlasDef): Texture[] {

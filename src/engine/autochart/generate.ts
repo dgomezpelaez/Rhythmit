@@ -57,7 +57,7 @@ export function generateCharts(
   onsets: readonly BandOnsets[],
   bpm: BpmEstimate,
   durationMs: number,
-  opts: { title: string; audioName: string },
+  opts: { title: string; audioName: string; artist?: string },
 ): Record<AutoDifficulty, Chart> {
   const events = mergeIntoEvents(onsets);
   const result = {} as Record<AutoDifficulty, Chart>;
@@ -67,7 +67,7 @@ export function generateCharts(
       version: 1,
       song: {
         title: opts.title,
-        artist: 'auto-chart',
+        artist: opts.artist ?? 'auto-chart',
         audio: opts.audioName,
         bpm: bpm.bpm,
         offsetMs: bpm.offsetMs,

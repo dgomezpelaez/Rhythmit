@@ -15,7 +15,7 @@ import {
   DEFAULT_DIR_FOODS,
   type FoodDef,
 } from '../engine/food';
-import { sliceSheet, type LoadedCharacter } from '../engine/sheet';
+import { sliceSheet, type LoadedCharacter } from '../engine/pixi/sheet';
 import type { FileMap } from './files';
 import type { ParsedFood, ParsedMod } from './validate';
 

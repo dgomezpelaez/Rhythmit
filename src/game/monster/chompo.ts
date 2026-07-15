@@ -15,7 +15,8 @@ import {
   parseCharacter,
   type CharacterDef,
 } from '../../engine/character';
-import { sliceSheet, type AtlasDef, type LoadedCharacter } from '../../engine/sheet';
+import { sliceSheet, type LoadedCharacter } from '../../engine/pixi/sheet';
+import type { AtlasDef } from '../../engine/atlas';
 
 const SOURCE = 'chompo (built-in)';
 const FRAME = 128;

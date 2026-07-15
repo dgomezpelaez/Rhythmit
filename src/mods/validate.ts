@@ -15,7 +15,7 @@ import {
 } from '../engine/character';
 import { parseChart, type Chart } from '../engine/chart';
 import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../engine/food';
-import { parseAtlas, type AtlasDef } from '../engine/sheet';
+import { parseAtlas, type AtlasDef } from '../engine/atlas';
 import { resolveRelative, type FileMap } from './files';
 import { parseModManifest, type ModManifest } from './manifest';
 

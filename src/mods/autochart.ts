@@ -10,6 +10,7 @@
 
 import { AUTO_DIFFICULTIES, type AutoDifficulty } from '../engine/autochart/generate';
 import type { AnalyzeRequest, WorkerReply } from '../engine/autochart/messages';
+import { createAutochartWorker } from '../engine/autochart/spawn';
 import { parseChart, type Chart } from '../engine/chart';
 import {
   idbDeleteAutochart,
@@ -61,9 +62,7 @@ export function createAutochartManager(opts: {
   let currentJobId = 0;
 
   const spawnWorker = (): Worker => {
-    const w = new Worker(new URL('../engine/autochart/worker.ts', import.meta.url), {
-      type: 'module',
-    });
+    const w = createAutochartWorker();
     w.onmessage = (e: MessageEvent<WorkerReply>) => handleReply(e.data);
     w.onerror = (e) => {
       ui.setProgress(null);

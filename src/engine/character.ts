@@ -1,9 +1,9 @@
 /**
  * Character definition — the modding contract for playable characters
  * (design doc §3.3). A character is a spritesheet + JSON; making a new
- * monster requires zero code. The core engine treats this as a generic
- * "animated character" — what the animations *mean* (chomp, splat, fever)
- * is the game layer's business.
+ * monster requires zero code. The engine treats this as a generic
+ * "animated character" — what the animations *mean*, and which ones a game
+ * requires (see missingAnimations), is the game layer's business.
  *
  * Extension over §3.3: an optional `eyes` block places two overlay pupils
  * (in frame-pixel coordinates) that the game moves at runtime to track
@@ -43,21 +43,6 @@ export interface EyesDef {
   /** Animations that bake their own eye art; overlay pupils hide during these. */
   hiddenDuring: readonly string[];
 }
-
-/**
- * Animations the game plays unconditionally — a character without all of
- * these is rejected at load time. Optional extras: combo_10, combo_25, fever.
- */
-export const REQUIRED_ANIMATIONS = [
-  'idle',
-  'chomp_left',
-  'chomp_right',
-  'chomp_up',
-  'chomp_down',
-  'perfect',
-  'splat',
-  'ko',
-] as const;
 
 export interface CharacterDef {
   id: string;
@@ -211,4 +196,15 @@ export function frameAt(anim: FrameAnimation, elapsedMs: number): number {
 
 export function animationDurationMs(anim: FrameAnimation): number {
   return (anim.frames.length / anim.fps) * 1000;
+}
+
+/**
+ * Names from `required` that have no animation in `def`. Which animations a
+ * game requires is the game's business; this only does the checking.
+ */
+export function missingAnimations(
+  def: CharacterDef,
+  required: readonly string[],
+): string[] {
+  return required.filter((name) => !def.animations[name]);
 }

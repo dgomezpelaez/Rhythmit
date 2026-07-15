@@ -18,10 +18,11 @@ import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import {
   animationDurationMs,
   frameAt,
-  REQUIRED_ANIMATIONS,
+  missingAnimations,
   type EyesDef,
   type FrameAnimation,
 } from '../../engine/character';
+import { REQUIRED_ANIMATIONS } from './animations';
 import type { Direction } from '../../engine/chart';
 import type { Judgment } from '../../engine/judge';
 import type { LoadedCharacter } from '../../engine/pixi/sheet';
@@ -68,12 +69,10 @@ export class Monster {
     private readonly displayScale = 1.3,
   ) {
     this.anims = character.def.animations;
-    for (const name of REQUIRED_ANIMATIONS) {
-      if (!this.anims[name]) {
-        throw new Error(
-          `character "${character.def.id}": required animation "${name}" missing`,
-        );
-      }
+    for (const name of missingAnimations(character.def, REQUIRED_ANIMATIONS)) {
+      throw new Error(
+        `character "${character.def.id}": required animation "${name}" missing`,
+      );
     }
 
     this.sprite = new Sprite(

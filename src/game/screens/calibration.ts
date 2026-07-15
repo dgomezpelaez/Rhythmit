@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { Conductor } from '../../engine/conductor';
-import { saveCalibrationOffsetMs } from '../../engine/settings';
+import { saveCalibrationOffsetMs } from '../settings';
 import type { Screen } from './screen';
 
 const BPM = 90;

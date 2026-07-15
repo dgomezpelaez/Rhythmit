@@ -7,8 +7,8 @@
  * that direction.
  */
 
-import type { Direction } from './chart';
-import { fail, requireObject, requireString } from './validate';
+import type { Direction } from '../engine/chart';
+import { fail, requireObject, requireString } from '../engine/validate';
 
 export interface FoodDef {
   id: string;

@@ -5,7 +5,7 @@ import { Hitstop } from '../../engine/hitstop';
 import { HitJudge, WINDOWS, type Judgment } from '../../engine/judge';
 import { ParticleSystem } from '../../engine/pixi/particles';
 import { gradeFor, ScoreState } from '../../engine/score';
-import { loadCalibrationOffsetMs } from '../../engine/settings';
+import { loadCalibrationOffsetMs } from '../settings';
 import type { LoadedCharacter } from '../../engine/pixi/sheet';
 import type { ChartFoods } from '../../mods/registry';
 import { Monster } from '../monster/monster';

@@ -5,7 +5,7 @@
 
 import { Container, Text } from 'pixi.js';
 import type { Direction } from '../../engine/chart';
-import { loadSelectedSongId, saveSelectedSongId } from '../../engine/settings';
+import { loadSelectedSongId, saveSelectedSongId } from '../settings';
 import type { ContentRegistry, SongEntry } from '../../mods/registry';
 import { ListView } from './listview';
 import type { Screen } from './screen';

@@ -9,12 +9,13 @@
 
 import {
   assertFramesInRange,
+  missingAnimations,
   parseCharacter,
-  REQUIRED_ANIMATIONS,
   type CharacterDef,
 } from '../engine/character';
+import { REQUIRED_ANIMATIONS } from '../game/monster/animations';
 import { parseChart, type Chart } from '../engine/chart';
-import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../engine/food';
+import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../game/food';
 import { parseAtlas, type AtlasDef } from '../engine/atlas';
 import { resolveRelative, type FileMap } from './files';
 import { parseModManifest, type ModManifest } from './manifest';
@@ -270,7 +271,7 @@ async function loadCharacter(
   const def = parseCharacter(await readJson(files, path), path);
 
   let ok = true;
-  const missing = REQUIRED_ANIMATIONS.filter((name) => !def.animations[name]);
+  const missing = missingAnimations(def, REQUIRED_ANIMATIONS);
   for (const name of missing) {
     errors.push(
       `${path}: animation '${name}' missing (required: ${REQUIRED_ANIMATIONS.join(', ')})`,

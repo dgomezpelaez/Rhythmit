@@ -3,7 +3,7 @@ import { AudioClock } from './engine/audio';
 import { parseChart, type Direction } from './engine/chart';
 import { Conductor } from './engine/conductor';
 import { startRenderLoop } from './engine/loop';
-import { loadCalibrationOffsetMs } from './engine/settings';
+import { loadCalibrationOffsetMs } from './game/settings';
 import { buildChompo } from './game/monster/chompo';
 import { CalibrationScreen } from './game/screens/calibration';
 import { CharacterSelectScreen } from './game/screens/charselect';

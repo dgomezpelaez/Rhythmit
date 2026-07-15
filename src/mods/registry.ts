@@ -14,7 +14,7 @@ import {
   colorToTint,
   DEFAULT_DIR_FOODS,
   type FoodDef,
-} from '../engine/food';
+} from '../game/food';
 import { sliceSheet, type LoadedCharacter } from '../engine/pixi/sheet';
 import type { FileMap } from './files';
 import type { ParsedFood, ParsedMod } from './validate';

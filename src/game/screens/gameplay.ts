@@ -65,6 +65,20 @@ const DIR_VECTORS: Record<Direction, { x: number; y: number }> = {
 /** Food sprite size when the food ships an image (fallback circle is r=18). */
 const FOOD_SPRITE_PX = 38;
 
+/** Receptor ring at the hit point: food fills the ring exactly at "press". */
+const RECEPTOR_RADIUS_PX = 22;
+/** Short lane ticks just outside the ring, marking the four approach axes. */
+const RECEPTOR_TICK_INNER_PX = 30;
+const RECEPTOR_TICK_OUTER_PX = 42;
+const RECEPTOR_ALPHA_BASE = 0.45;
+const RECEPTOR_ALPHA_PULSE = 0.3;
+const RECEPTOR_PULSE_SCALE = 0.06;
+
+/** Food spawns at this scale and grows linearly to 1.0 at the mouth. */
+const NOTE_SPAWN_SCALE = 0.6;
+/** Brief fade-in so spawns don't pop into an already-busy scene. */
+const NOTE_FADE_IN_MS = 120;
+
 const JUDGMENT_STYLE: Record<Judgment, { label: string; color: string }> = {
   perfect: { label: 'PERFECT!', color: '#7cff6b' },
   good: { label: 'GOOD', color: '#ffd166' },
@@ -112,9 +126,10 @@ export class GameplayScreen implements Screen {
   private readonly hitstop = new Hitstop();
   private readonly particles = new ParticleSystem();
   private readonly splats = new SplatLayer();
+  private readonly receptor = new Graphics();
   private zoomPulse = 0;
   private lastBeat = Number.NEGATIVE_INFINITY;
-  private lastVisMs: number | null = null;
+  private lastDisplayMs: number | null = null;
   private clearedAtMs: number | null = null;
   private lastKoSplatMs = 0;
   private lastResults: ResultsData | null = null;
@@ -141,7 +156,26 @@ export class GameplayScreen implements Screen {
     // Pivot at the stage centre so the downbeat zoom breathes in place.
     this.world.pivot.set(this.cx, this.cy);
     this.world.position.set(this.cx, this.cy);
+    // Receptor: a fixed ring + lane ticks marking the exact hit point, so
+    // the player times against something still. Between monster and notes —
+    // reads over the animating body, never occludes food.
+    this.receptor
+      // Dark halo first so the white ring separates from the bright body.
+      .circle(0, 0, RECEPTOR_RADIUS_PX)
+      .stroke({ width: 8, color: 0x000000, alpha: 0.45 })
+      .circle(0, 0, RECEPTOR_RADIUS_PX)
+      .stroke({ width: 3, color: 0xffffff, alpha: 1 });
+    for (const v of Object.values(DIR_VECTORS)) {
+      this.receptor
+        .moveTo(v.x * RECEPTOR_TICK_INNER_PX, v.y * RECEPTOR_TICK_INNER_PX)
+        .lineTo(v.x * RECEPTOR_TICK_OUTER_PX, v.y * RECEPTOR_TICK_OUTER_PX)
+        .stroke({ width: 3, color: 0xffffff, alpha: 0.7 });
+    }
+    this.receptor.alpha = RECEPTOR_ALPHA_BASE;
+    this.receptor.position.set(this.cx, this.cy);
+
     this.world.addChild(this.monster.view);
+    this.world.addChild(this.receptor);
     this.world.addChild(this.noteLayer);
     this.world.addChild(this.particles.view);
     this.view.addChild(this.world);
@@ -213,7 +247,7 @@ export class GameplayScreen implements Screen {
     this.splats.clear();
     this.zoomPulse = 0;
     this.lastBeat = Number.NEGATIVE_INFINITY;
-    this.lastVisMs = null;
+    this.lastDisplayMs = null;
     this.clearedAtMs = null;
     this.lastKoSplatMs = 0;
     this.lastResults = null;
@@ -234,15 +268,25 @@ export class GameplayScreen implements Screen {
   }
 
   update(): void {
-    // Judgment reads true song time; visuals read the hitstop-clamped clock
-    // so a Perfect freezes the picture for 2–3 frames without touching audio.
+    // Three clocks with distinct roles:
+    //  songMs    — judgment truth, straight off AudioContext.currentTime.
+    //  displayMs — what the player is HEARING right now (song time minus
+    //              output latency); notes and beat effects render to this so
+    //              sight and sound agree.
+    //  visMs     — juice clock: displayMs clamped by hitstop so a Perfect
+    //              freezes the monster/particles 2–3 frames. Note motion is
+    //              deliberately exempt — frozen-then-snapping food corrupted
+    //              the read on the next note.
     const songMs = this.conductor.songTimeMs();
-    const visMs = this.hitstop.visualMs(songMs);
+    const displayMs = this.conductor.displayTimeMs();
+    const visMs = this.hitstop.visualMs(displayMs);
 
     if (!this.finished) {
-      for (const noteIndex of this.judge.sweepMisses(songMs)) {
+      // Sweep on the same latency-shifted clock that judges input, so a
+      // note stays hittable for as long as it is audibly current.
+      for (const noteIndex of this.judge.sweepMisses(displayMs)) {
         this.scoreState.addJudgment('miss');
-        this.missedAtMs.set(noteIndex, songMs);
+        this.missedAtMs.set(noteIndex, displayMs);
         this.monster.onMiss();
         this.monster.setCombo(this.scoreState.combo);
         this.hunger = Math.max(0, this.hunger - HUNGER_MISS);
@@ -265,11 +309,11 @@ export class GameplayScreen implements Screen {
       if (this.hunger <= 0) {
         this.knockOut(songMs);
       } else {
-        this.updateNoteSprites(visMs);
+        this.updateNoteSprites(displayMs);
       }
     }
 
-    this.updateBeatEffects(visMs);
+    this.updateBeatEffects(displayMs, visMs);
     this.updateKoSplatRain(songMs, visMs);
     this.monster.update(visMs, this.gazeTarget());
     this.splats.update(visMs);
@@ -279,18 +323,27 @@ export class GameplayScreen implements Screen {
     this.checkEnd(songMs);
   }
 
-  /** Beat-crossing effects: downbeat zoom pulse + post-clear confetti. */
-  private updateBeatEffects(visMs: number): void {
-    const dt = this.lastVisMs === null ? 16 : Math.max(0, visMs - this.lastVisMs);
-    this.lastVisMs = visMs;
+  /** Beat-crossing effects: downbeat zoom, receptor pulse, clear confetti. */
+  private updateBeatEffects(displayMs: number, visMs: number): void {
+    const dt =
+      this.lastDisplayMs === null ? 16 : Math.max(0, displayMs - this.lastDisplayMs);
+    this.lastDisplayMs = displayMs;
 
-    const beat = Math.floor(this.conductor.beatAt(visMs));
+    // Receptor pulses on each HEARD beat — a continuous visual metronome at
+    // the exact hit point (same phase/decay feel as the metronome screen).
+    const phase = ((this.conductor.beatAt(displayMs) % 1) + 1) % 1;
+    const pulse = Math.max(0, 1 - phase / 0.3);
+    this.receptor.alpha = RECEPTOR_ALPHA_BASE + RECEPTOR_ALPHA_PULSE * pulse;
+    this.receptor.scale.set(1 + RECEPTOR_PULSE_SCALE * pulse);
+
+    const beat = Math.floor(this.conductor.beatAt(displayMs));
     const crossed = beat > this.lastBeat;
     if (crossed) {
       this.lastBeat = beat;
       if (beat >= 0 && beat % 4 === 0) this.zoomPulse = 1;
       // Celebration: confetti raining on every beat, tapering off so it
-      // doesn't churn forever under the results panel.
+      // doesn't churn forever under the results panel. Particle birth times
+      // stay on visMs to match particles.update(visMs).
       if (
         this.clearedAtMs !== null &&
         visMs < this.clearedAtMs + CELEBRATE_CONFETTI_MS
@@ -334,8 +387,13 @@ export class GameplayScreen implements Screen {
 
   onDir(dir: Direction, audioTimeMs: number): void {
     if (this.finished) return;
+    // A player timing to what they HEAR presses outputLatency late relative
+    // to the chart; subtract it so calibration only has to capture human +
+    // input bias.
     const songMs =
-      this.conductor.toSongTimeMs(audioTimeMs) - loadCalibrationOffsetMs();
+      this.conductor.toSongTimeMs(audioTimeMs) -
+      this.conductor.outputLatencyMs() -
+      loadCalibrationOffsetMs();
     const hit = this.judge.tryHit(dir, songMs);
     if (!hit) return;
     this.lastHitErrMs = hit.errorMs;
@@ -349,9 +407,14 @@ export class GameplayScreen implements Screen {
       this.sprites.delete(hit.noteIndex);
     }
 
-    const nowMs = this.conductor.songTimeMs();
+    // Hitstop runs on the display clock (same clock update() feeds it).
+    const nowMs = this.conductor.displayTimeMs();
     if (hit.judgment === 'perfect') this.hitstop.trigger(nowMs);
     const visMs = this.hitstop.visualMs(nowMs);
+    // Fan the burst along the food's travel direction — across the monster,
+    // never back up the lane the next note is arriving on.
+    const v = DIR_VECTORS[this.chart.notes[hit.noteIndex]!.dir];
+    const a = Math.atan2(-v.y, -v.x);
     this.particles.burst(visMs, {
       x: this.cx,
       y: this.cy,
@@ -361,19 +424,20 @@ export class GameplayScreen implements Screen {
       lifeMs: [280, 520],
       size: [2, 5],
       gravity: 350,
+      angle: [a - 1.1, a + 1.1],
     });
     this.spawnFloatText(hit.judgment, this.chart.notes[hit.noteIndex]!, visMs);
   }
 
-  private updateNoteSprites(songMs: number): void {
+  private updateNoteSprites(displayMs: number): void {
     for (let i = 0; i < this.chart.notes.length; i++) {
       const note = this.chart.notes[i]!;
-      const untilHitMs = note.timeMs - songMs;
+      const untilHitMs = note.timeMs - displayMs;
       if (untilHitMs > APPROACH_MS) break; // sorted: rest are further out
       if (this.judge.stateOf(i) === 'hit') continue;
 
       const missedAt = this.missedAtMs.get(i);
-      if (missedAt !== undefined && songMs - missedAt > MISS_LINGER_MS) {
+      if (missedAt !== undefined && displayMs - missedAt > MISS_LINGER_MS) {
         const sprite = this.sprites.get(i);
         if (sprite) {
           sprite.destroy();
@@ -384,33 +448,41 @@ export class GameplayScreen implements Screen {
 
       let sprite = this.sprites.get(i);
       if (!sprite) {
+        // Wrapper container: the inner sprite keeps its baked base scale,
+        // the wrapper carries the per-frame position/scale/alpha.
         const visual = this.foods.forNote(note);
+        sprite = new Container();
         if (visual.texture) {
           const food = new Sprite(visual.texture);
           food.anchor.set(0.5);
-          const scale =
-            FOOD_SPRITE_PX / Math.max(visual.texture.width, visual.texture.height);
-          food.scale.set(scale);
-          sprite = food;
+          food.scale.set(
+            FOOD_SPRITE_PX / Math.max(visual.texture.width, visual.texture.height),
+          );
+          sprite.addChild(food);
         } else {
-          sprite = new Graphics().circle(0, 0, 18).fill(visual.tint);
+          sprite.addChild(new Graphics().circle(0, 0, 18).fill(visual.tint));
         }
         this.sprites.set(i, sprite);
         this.noteLayer.addChild(sprite);
       }
 
-      // Position: pure function of song time. progress 0 = just spawned,
+      // Position: pure function of display time. progress 0 = just spawned,
       // 1 = at the mouth; > 1 keeps flying past (missed food overshoots).
+      // Motion stays LINEAR — constant velocity is itself a timing cue.
       const progress = 1 - untilHitMs / APPROACH_MS;
       const v = DIR_VECTORS[note.dir];
       sprite.x = this.cx + v.x * TRAVEL_PX * (1 - progress);
       sprite.y = this.cy + v.y * TRAVEL_PX * (1 - progress);
-      // missedAt is recorded in true song time but rendered in visual time,
-      // which can lag behind during a hitstop — clamp so alpha never exceeds 1.
+      // Impact cue: food grows to full size exactly at the mouth — "the food
+      // fills the receptor ring" is the press signal.
+      const grow = Math.min(1, Math.max(0, progress));
+      sprite.scale.set(NOTE_SPAWN_SCALE + (1 - NOTE_SPAWN_SCALE) * grow);
+      const fadeIn = Math.min(1, (APPROACH_MS - untilHitMs) / NOTE_FADE_IN_MS);
       sprite.alpha =
-        missedAt === undefined
+        fadeIn *
+        (missedAt === undefined
           ? 1
-          : Math.min(1, Math.max(0, 1 - (songMs - missedAt) / MISS_LINGER_MS));
+          : Math.min(1, Math.max(0, 1 - (displayMs - missedAt) / MISS_LINGER_MS)));
     }
   }
 
@@ -451,8 +523,10 @@ export class GameplayScreen implements Screen {
       },
     });
     text.anchor.set(0.5);
+    // Perpendicular to the approach axis: near "its" lane but never sitting
+    // in the path of the next incoming food.
     const v = DIR_VECTORS[note.dir];
-    text.position.set(this.cx + v.x * 110, this.cy + v.y * 110 - 40);
+    text.position.set(this.cx + v.y * 80, this.cy - v.x * 80 - 30);
     this.uiLayer.addChild(text);
     this.floatTexts.push({ text, bornMs: songMs });
   }
@@ -562,11 +636,12 @@ export class GameplayScreen implements Screen {
   }
 
   nextNoteLabel(): string {
-    const songMs = this.conductor.songTimeMs();
-    const i = this.judge.nextPendingIndex(songMs);
+    // Display clock: "in 0ms" is when the player should press.
+    const displayMs = this.conductor.displayTimeMs();
+    const i = this.judge.nextPendingIndex(displayMs);
     if (i === null) return '—';
     const n = this.chart.notes[i]!;
-    return `${n.dir} in ${(n.timeMs - songMs).toFixed(0)}ms`;
+    return `${n.dir} in ${(n.timeMs - displayMs).toFixed(0)}ms`;
   }
 
   judgedLabel(): string {

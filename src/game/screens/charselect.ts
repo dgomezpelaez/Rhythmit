@@ -5,13 +5,13 @@
  */
 
 import { Container, Sprite, Text, Texture } from 'pixi.js';
-import { frameAt } from '../../core/character';
-import type { Direction } from '../../core/chart';
+import { frameAt } from '../../engine/character';
+import type { Direction } from '../../engine/chart';
 import {
   loadSelectedCharacterId,
   saveSelectedCharacterId,
-} from '../../core/settings';
-import type { LoadedCharacter } from '../../core/sheet';
+} from '../../engine/settings';
+import type { LoadedCharacter } from '../../engine/sheet';
 import type { CharacterEntry, ContentRegistry } from '../../mods/registry';
 import { ListView } from './listview';
 import type { Screen } from './screen';

@@ -4,8 +4,8 @@
  */
 
 import { Container, Text } from 'pixi.js';
-import type { Direction } from '../../core/chart';
-import { loadSelectedSongId, saveSelectedSongId } from '../../core/settings';
+import type { Direction } from '../../engine/chart';
+import { loadSelectedSongId, saveSelectedSongId } from '../../engine/settings';
 import type { ContentRegistry, SongEntry } from '../../mods/registry';
 import { ListView } from './listview';
 import type { Screen } from './screen';

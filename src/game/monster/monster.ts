@@ -21,10 +21,10 @@ import {
   REQUIRED_ANIMATIONS,
   type EyesDef,
   type FrameAnimation,
-} from '../../core/character';
-import type { Direction } from '../../core/chart';
-import type { Judgment } from '../../core/judge';
-import type { LoadedCharacter } from '../../core/sheet';
+} from '../../engine/character';
+import type { Direction } from '../../engine/chart';
+import type { Judgment } from '../../engine/judge';
+import type { LoadedCharacter } from '../../engine/sheet';
 
 const CHOMP_ANIM: Record<Direction, string> = {
   left: 'chomp_left',

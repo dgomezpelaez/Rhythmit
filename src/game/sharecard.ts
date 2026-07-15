@@ -9,7 +9,7 @@
  */
 
 import { Container, Graphics, Sprite, Text, type Renderer, type Texture } from 'pixi.js';
-import type { Grade } from '../core/score';
+import type { Grade } from '../engine/score';
 import { SplatLayer, type SplatSpec } from './monster/splats';
 
 export const CARD_W = 1200;

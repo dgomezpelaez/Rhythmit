@@ -12,10 +12,10 @@ import {
   parseCharacter,
   REQUIRED_ANIMATIONS,
   type CharacterDef,
-} from '../core/character';
-import { parseChart, type Chart } from '../core/chart';
-import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../core/food';
-import { parseAtlas, type AtlasDef } from '../core/sheet';
+} from '../engine/character';
+import { parseChart, type Chart } from '../engine/chart';
+import { BUILT_IN_FOODS, parseFoods, type FoodDef } from '../engine/food';
+import { parseAtlas, type AtlasDef } from '../engine/sheet';
 import { resolveRelative, type FileMap } from './files';
 import { parseModManifest, type ModManifest } from './manifest';
 

@@ -8,9 +8,9 @@
  * queue, so a cancel message would arrive too late to matter.
  */
 
-import { AUTO_DIFFICULTIES, type AutoDifficulty } from '../core/autochart/generate';
-import type { AnalyzeRequest, WorkerReply } from '../core/autochart/messages';
-import { parseChart, type Chart } from '../core/chart';
+import { AUTO_DIFFICULTIES, type AutoDifficulty } from '../engine/autochart/generate';
+import type { AnalyzeRequest, WorkerReply } from '../engine/autochart/messages';
+import { parseChart, type Chart } from '../engine/chart';
 import {
   idbDeleteAutochart,
   idbGetAutochart,
@@ -61,7 +61,7 @@ export function createAutochartManager(opts: {
   let currentJobId = 0;
 
   const spawnWorker = (): Worker => {
-    const w = new Worker(new URL('../core/autochart/worker.ts', import.meta.url), {
+    const w = new Worker(new URL('../engine/autochart/worker.ts', import.meta.url), {
       type: 'module',
     });
     w.onmessage = (e: MessageEvent<WorkerReply>) => handleReply(e.data);

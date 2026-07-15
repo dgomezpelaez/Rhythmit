@@ -7,15 +7,15 @@
  */
 
 import { Texture } from 'pixi.js';
-import { assertFramesInRange } from '../core/character';
-import type { Chart, Direction, Note } from '../core/chart';
+import { assertFramesInRange } from '../engine/character';
+import type { Chart, Direction, Note } from '../engine/chart';
 import {
   BUILT_IN_FOODS,
   colorToTint,
   DEFAULT_DIR_FOODS,
   type FoodDef,
-} from '../core/food';
-import { sliceSheet, type LoadedCharacter } from '../core/sheet';
+} from '../engine/food';
+import { sliceSheet, type LoadedCharacter } from '../engine/sheet';
 import type { FileMap } from './files';
 import type { ParsedFood, ParsedMod } from './validate';
 

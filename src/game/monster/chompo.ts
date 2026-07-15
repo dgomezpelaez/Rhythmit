@@ -14,8 +14,8 @@ import {
   assertFramesInRange,
   parseCharacter,
   type CharacterDef,
-} from '../../core/character';
-import { sliceSheet, type AtlasDef, type LoadedCharacter } from '../../core/sheet';
+} from '../../engine/character';
+import { sliceSheet, type AtlasDef, type LoadedCharacter } from '../../engine/sheet';
 
 const SOURCE = 'chompo (built-in)';
 const FRAME = 128;

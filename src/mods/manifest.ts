@@ -4,7 +4,7 @@
  * relative to the mod root.
  */
 
-import { fail, requireObject, requireString } from '../core/validate';
+import { fail, requireObject, requireString } from '../engine/validate';
 import { normalizePath } from './files';
 
 export interface ModManifest {

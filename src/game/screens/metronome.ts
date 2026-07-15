@@ -95,13 +95,12 @@ export class MetronomeScreen implements Screen {
   }
 
   onTap(audioTimeMs: number): void {
-    // Convert to song time first — the beat grid lives on the song clock.
-    // Output latency is subtracted the same way gameplay judges input: a
-    // player tapping to the heard click taps that much late on this clock.
-    const songMs =
-      this.conductor.toSongTimeMs(audioTimeMs) -
-      this.conductor.outputLatencyMs() -
-      loadCalibrationOffsetMs();
+    // The beat grid lives on the song clock; inputTimeMs applies the same
+    // latency + calibration correction gameplay judges input with.
+    const songMs = this.conductor.inputTimeMs(
+      audioTimeMs,
+      loadCalibrationOffsetMs(),
+    );
     this.lastTapErrorMs = songMs - this.conductor.nearestBeatMs(songMs);
   }
 

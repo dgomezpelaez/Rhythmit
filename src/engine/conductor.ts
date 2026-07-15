@@ -130,6 +130,22 @@ export class Conductor {
     return audioTimeMs - this.startCtxTime * 1000;
   }
 
+  /**
+   * Calibrated song time for an input event: maps an absolute audio-clock
+   * timestamp (AudioClock.eventTimeToAudioMs) onto the song clock, minus
+   * output latency (a player timing to what they HEAR presses that much
+   * late on this clock) and the caller's calibration offset (input latency
+   * + human bias — pass nothing while measuring it). Judge hits against
+   * this.
+   */
+  inputTimeMs(audioTimeMs: number, calibrationOffsetMs = 0): number {
+    return (
+      this.toSongTimeMs(audioTimeMs) -
+      this.outputLatencyMs() -
+      calibrationOffsetMs
+    );
+  }
+
   get ended(): boolean {
     return this.mode === 'song' && this.songTimeMs() >= this.songDurationMs;
   }

@@ -387,13 +387,10 @@ export class GameplayScreen implements Screen {
 
   onDir(dir: Direction, audioTimeMs: number): void {
     if (this.finished) return;
-    // A player timing to what they HEAR presses outputLatency late relative
-    // to the chart; subtract it so calibration only has to capture human +
-    // input bias.
-    const songMs =
-      this.conductor.toSongTimeMs(audioTimeMs) -
-      this.conductor.outputLatencyMs() -
-      loadCalibrationOffsetMs();
+    const songMs = this.conductor.inputTimeMs(
+      audioTimeMs,
+      loadCalibrationOffsetMs(),
+    );
     const hit = this.judge.tryHit(dir, songMs);
     if (!hit) return;
     this.lastHitErrMs = hit.errorMs;

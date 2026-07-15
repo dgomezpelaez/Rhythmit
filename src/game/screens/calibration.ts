@@ -99,11 +99,9 @@ export class CalibrationScreen implements Screen {
   onTap(audioTimeMs: number): void {
     if (this.done) return;
 
-    // Song-clock delta vs the actual beat grid; output latency is subtracted
-    // (it's known), but no calibration subtraction — this screen is the one
-    // measuring that offset.
-    const songMs =
-      this.conductor.toSongTimeMs(audioTimeMs) - this.conductor.outputLatencyMs();
+    // Song-clock delta vs the actual beat grid; no calibration subtraction
+    // (inputTimeMs default 0) — this screen is the one measuring that offset.
+    const songMs = this.conductor.inputTimeMs(audioTimeMs);
     const delta = songMs - this.conductor.nearestBeatMs(songMs);
     this.tapCount += 1;
     this.lastTap.text = `${delta > 0 ? '+' : ''}${delta.toFixed(0)} ms`;

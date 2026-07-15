@@ -15,18 +15,25 @@ export type AutoDifficulty = (typeof AUTO_DIFFICULTIES)[number];
 interface DifficultyParams {
   /** Keep this fraction of events, strongest first. */
   keepFraction: number;
-  minGapMs: number;
-  sameDirGapMs: number;
+  /** Minimum gap between events as a fraction of the beat period… */
+  minGapBeats: number;
+  /** …but never below this floor (guards against fast/misdetected BPM). */
+  minGapFloorMs: number;
   maxSimultaneous: 1 | 2;
   /** Event strength needed before a second simultaneous note is allowed. */
   chordMinStrength: number;
+  /** Safety cap on sustained density (sliding-window notes per second). */
+  maxNps: number;
 }
 
 const PARAMS: Record<AutoDifficulty, DifficultyParams> = {
-  easy: { keepFraction: 0.35, minGapMs: 250, sameDirGapMs: 500, maxSimultaneous: 1, chordMinStrength: Infinity },
-  normal: { keepFraction: 0.6, minGapMs: 150, sameDirGapMs: 300, maxSimultaneous: 2, chordMinStrength: 0.8 },
-  hard: { keepFraction: 0.85, minGapMs: 90, sameDirGapMs: 180, maxSimultaneous: 2, chordMinStrength: 0.6 },
+  easy: { keepFraction: 0.3, minGapBeats: 1, minGapFloorMs: 300, maxSimultaneous: 1, chordMinStrength: Infinity, maxNps: 1.5 },
+  normal: { keepFraction: 0.45, minGapBeats: 0.5, minGapFloorMs: 180, maxSimultaneous: 2, chordMinStrength: 0.95, maxNps: 3 },
+  hard: { keepFraction: 0.6, minGapBeats: 0.25, minGapFloorMs: 110, maxSimultaneous: 2, chordMinStrength: 0.8, maxNps: 5 },
 };
+
+/** Sliding window used to enforce {@link DifficultyParams.maxNps}. */
+const NPS_WINDOW_MS = 2000;
 
 /** Onsets from different bands within this window are one musical event. */
 const EVENT_MERGE_MS = 30;
@@ -119,11 +126,14 @@ function buildNotes(
   const cutoff = Math.max(MIN_STRENGTH, sorted[cutIndex] ?? Infinity);
   let kept = events.filter((e) => e.strength >= cutoff);
 
-  // Spacing: on collision keep the stronger event.
+  // Spacing: on collision keep the stronger event. The gap is tempo-relative
+  // so a fast song doesn't turn into a stream just because its beats are close.
+  const beatMs = 60000 / bpm.bpm;
+  const minGapMs = Math.max(params.minGapFloorMs, params.minGapBeats * beatMs);
   const spaced: AutoEvent[] = [];
   for (const event of kept) {
     const last = spaced[spaced.length - 1];
-    if (last && event.timeMs - last.timeMs < params.minGapMs) {
+    if (last && event.timeMs - last.timeMs < minGapMs) {
       if (event.strength > last.strength) spaced[spaced.length - 1] = event;
       continue;
     }
@@ -131,14 +141,9 @@ function buildNotes(
   }
   kept = spaced;
 
-  const sixteenthMs = 60000 / bpm.bpm / 4;
-  const lastTimeByDir: Record<Direction, number> = {
-    left: -Infinity,
-    right: -Infinity,
-    up: -Infinity,
-    down: -Infinity,
-  };
-  let midSide: Direction = 'left';
+  const sixteenthMs = beatMs / 4;
+  // Timestamps of recently emitted notes, for the sliding-window density cap.
+  const recentMs: number[] = [];
 
   const notes: Note[] = [];
   for (const event of kept) {
@@ -151,17 +156,22 @@ function buildNotes(
 
     if (timeMs < FIRST_NOTE_MS || timeMs > durationMs - LAST_NOTE_MARGIN_MS) continue;
 
+    while (recentMs.length > 0 && timeMs - recentMs[0]! > NPS_WINDOW_MS) {
+      recentMs.shift();
+    }
+
     const maxNotes =
       params.maxSimultaneous === 2 && event.strength >= params.chordMinStrength ? 2 : 1;
     const usedDirs = new Set<Direction>();
 
     for (const { band } of event.bands) {
       if (usedDirs.size >= maxNotes) break;
-      const dir = assignDir(band, usedDirs, lastTimeByDir, timeMs, params.sameDirGapMs, midSide);
+      // Density cap: skip once the trailing window is already at maxNps.
+      if (recentMs.length >= params.maxNps * (NPS_WINDOW_MS / 1000)) break;
+      const dir = assignDir(band, timeMs, bpm.offsetMs, beatMs, usedDirs);
       if (!dir) continue;
-      if (band === 'mid') midSide = dir === 'left' ? 'right' : 'left';
       usedDirs.add(dir);
-      lastTimeByDir[dir] = timeMs;
+      recentMs.push(timeMs);
       notes.push({ timeMs, dir, type: 'tap' });
     }
   }
@@ -169,33 +179,30 @@ function buildNotes(
 }
 
 /**
- * Band → direction with jack avoidance: bass→down, treble→up, mid→L/R
- * alternating. A direction hit too recently is swapped — mid flips sides,
- * bass/treble fall back to the least-recently-used direction. Returns null
- * when every direction would be a jack (drop the note).
+ * Band → direction, kept strictly so charts read like the music: bass is
+ * always down, treble always up, and mid picks left/right from the note's
+ * eighth-note position on the beat grid. Side = beat parity + within-beat
+ * eighth parity, so on-beat hits alternate L R L R across the bar and eighth
+ * runs use both hands — but the choice is a pure function of *where in the
+ * bar* the note falls, so a riff that repeats every measure yields the same
+ * hand pattern every time. Same-direction runs are fine (two kicks = two
+ * down arrows); only a same-event duplicate returns null (drop the note).
  */
 function assignDir(
   band: Band,
-  usedDirs: ReadonlySet<Direction>,
-  lastTimeByDir: Readonly<Record<Direction, number>>,
   timeMs: number,
-  sameDirGapMs: number,
-  midSide: Direction,
+  offsetMs: number,
+  beatMs: number,
+  usedDirs: ReadonlySet<Direction>,
 ): Direction | null {
-  const ok = (dir: Direction) =>
-    !usedDirs.has(dir) && timeMs - lastTimeByDir[dir] >= sameDirGapMs;
+  if (band === 'bass') return usedDirs.has('down') ? null : 'down';
+  if (band === 'treble') return usedDirs.has('up') ? null : 'up';
 
-  const preferred: Direction[] =
-    band === 'bass'
-      ? ['down']
-      : band === 'treble'
-        ? ['up']
-        : [midSide, midSide === 'left' ? 'right' : 'left'];
-  for (const dir of preferred) if (ok(dir)) return dir;
-
-  // Fallback: least-recently-used direction that doesn't jack.
-  const byLru = (['left', 'right', 'up', 'down'] as const)
-    .filter(ok)
-    .sort((a, b) => lastTimeByDir[a] - lastTimeByDir[b]);
-  return byLru[0] ?? null;
+  const eighthIndex = Math.round((timeMs - offsetMs) / (beatMs / 2));
+  const beatIndex = Math.floor(eighthIndex / 2);
+  const parity = (((beatIndex + eighthIndex) % 2) + 2) % 2;
+  const side: Direction = parity === 0 ? 'left' : 'right';
+  if (!usedDirs.has(side)) return side;
+  const other: Direction = side === 'left' ? 'right' : 'left';
+  return usedDirs.has(other) ? null : other;
 }
